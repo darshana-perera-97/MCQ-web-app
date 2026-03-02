@@ -234,6 +234,132 @@ export const updateMcq = async (req, res) => {
   }
 };
 
+export const uploadMcqsFromCSV = async (req, res) => {
+  try {
+    if (!req.file) {
+      return res.status(400).json({ error: 'CSV file is required' });
+    }
+
+    const csvContent = req.file.buffer.toString('utf-8');
+    const lines = csvContent.split('\n').filter(line => line.trim());
+    
+    if (lines.length < 2) {
+      return res.status(400).json({ error: 'CSV file must contain at least a header and one data row' });
+    }
+
+    // Parse header
+    const header = lines[0].split(',').map(h => h.trim().toLowerCase());
+    const expectedHeaders = ['question', 'optiona', 'optionb', 'optionc', 'optiond', 'answer', 'category'];
+    
+    // Check if all required headers are present
+    const hasAllHeaders = expectedHeaders.slice(0, 6).every(h => header.includes(h));
+    if (!hasAllHeaders) {
+      return res.status(400).json({ 
+        error: 'CSV must contain columns: question, optionA, optionB, optionC, optionD, answer (category is optional)' 
+      });
+    }
+
+    const createdMcqs = [];
+    const errors = [];
+
+    // Process each row
+    for (let i = 1; i < lines.length; i++) {
+      const line = lines[i].trim();
+      if (!line) continue;
+
+      try {
+        // Parse CSV row (handling quoted fields)
+        const values = [];
+        let current = '';
+        let inQuotes = false;
+        
+        for (let j = 0; j < line.length; j++) {
+          const char = line[j];
+          if (char === '"') {
+            inQuotes = !inQuotes;
+          } else if (char === ',' && !inQuotes) {
+            values.push(current.trim());
+            current = '';
+          } else {
+            current += char;
+          }
+        }
+        values.push(current.trim());
+
+        // Map values to fields
+        const questionIndex = header.indexOf('question');
+        const optionAIndex = header.indexOf('optiona');
+        const optionBIndex = header.indexOf('optionb');
+        const optionCIndex = header.indexOf('optionc');
+        const optionDIndex = header.indexOf('optiond');
+        const answerIndex = header.indexOf('answer');
+        const categoryIndex = header.indexOf('category');
+
+        const question = values[questionIndex]?.trim();
+        const optionA = values[optionAIndex]?.trim();
+        const optionB = values[optionBIndex]?.trim();
+        const optionC = values[optionCIndex]?.trim();
+        const optionD = values[optionDIndex]?.trim();
+        const answer = values[answerIndex]?.trim().toUpperCase();
+        const category = categoryIndex >= 0 ? values[categoryIndex]?.trim() : null;
+
+        // Validate required fields
+        if (!question || !optionA || !optionB || !optionC || !optionD || !answer) {
+          errors.push(`Row ${i + 1}: Missing required fields`);
+          continue;
+        }
+
+        // Validate answer
+        if (!['A', 'B', 'C', 'D'].includes(answer)) {
+          errors.push(`Row ${i + 1}: Answer must be A, B, C, or D`);
+          continue;
+        }
+
+        // Generate unique ID
+        const now = new Date();
+        const yymmdd = now.toISOString().slice(2, 10).replace(/-/g, '');
+        const random = Math.floor(Math.random() * 1000).toString().padStart(3, '0');
+        const id = `MCQ-${yymmdd}-${random}`;
+
+        const newMcq = {
+          id,
+          question,
+          optionA,
+          optionB,
+          optionC,
+          optionD,
+          answer,
+          category: category || null,
+          image: null,
+          createdAt: new Date().toISOString()
+        };
+
+        await mcqModel.create(newMcq);
+        createdMcqs.push(newMcq);
+      } catch (error) {
+        errors.push(`Row ${i + 1}: ${error.message}`);
+      }
+    }
+
+    if (createdMcqs.length === 0 && errors.length > 0) {
+      return res.status(400).json({
+        error: 'Failed to create any MCQs',
+        errors
+      });
+    }
+
+    res.status(201).json({
+      message: `Successfully created ${createdMcqs.length} MCQ(s)`,
+      created: createdMcqs.length,
+      errors: errors.length > 0 ? errors : undefined,
+      mcqs: createdMcqs
+    });
+  } catch (error) {
+    console.error('CSV upload error:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+};
+
 export const deleteMcq = async (req, res) => {
   try {
     const { id } = req.params;

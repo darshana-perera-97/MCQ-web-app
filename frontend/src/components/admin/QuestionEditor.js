@@ -6,12 +6,15 @@ import { Input } from '../ui/input';
 import { Label } from '../ui/label';
 import { Textarea } from '../ui/textarea';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '../ui/tabs';
-import { Plus, Trash2, Search, Image as ImageIcon, X } from 'lucide-react';
+import { Plus, Trash2, Search, Image as ImageIcon, X, Upload, FileText } from 'lucide-react';
 
 export function QuestionEditor() {
   const [questions, setQuestions] = useState([]);
   const [searchQuery, setSearchQuery] = useState('');
   const [loading, setLoading] = useState(true);
+  const [csvFile, setCsvFile] = useState(null);
+  const [csvUploading, setCsvUploading] = useState(false);
+  const [csvUploadResult, setCsvUploadResult] = useState(null);
   
   // MCQ Form State
   const [mcqForm, setMcqForm] = useState({
@@ -34,19 +37,33 @@ export function QuestionEditor() {
     category: '',
   });
 
+  const [activeTab, setActiveTab] = useState('add');
+
   useEffect(() => {
     loadQuestions();
   }, []);
+
+  // Reload questions when switching to manage tab
+  useEffect(() => {
+    if (activeTab === 'manage') {
+      loadQuestions();
+    }
+  }, [activeTab]);
 
   const loadQuestions = async () => {
     try {
       setLoading(true);
       const adminSecret = getAdminSecret();
+      console.log('Loading questions with admin secret:', adminSecret ? 'Present' : 'Missing');
       const response = await mcqAPI.getAll(adminSecret);
-      setQuestions(response.mcqs || []);
+      console.log('Questions response:', response);
+      const questionsList = response.mcqs || response || [];
+      console.log('Questions list:', questionsList);
+      setQuestions(Array.isArray(questionsList) ? questionsList : []);
     } catch (err) {
       console.error('Error loading questions:', err);
       alert(err.message || 'Failed to load questions');
+      setQuestions([]);
     } finally {
       setLoading(false);
     }
@@ -78,6 +95,70 @@ export function QuestionEditor() {
   const handleRemoveImage = () => {
     setMcqImage(null);
     setMcqImagePreview(null);
+  };
+
+  const handleCSVFileChange = (e) => {
+    const file = e.target.files[0];
+    if (file) {
+      if (!file.name.toLowerCase().endsWith('.csv')) {
+        alert('Please select a CSV file');
+        return;
+      }
+      setCsvFile(file);
+      setCsvUploadResult(null);
+    }
+  };
+
+  const handleCSVUpload = async () => {
+    if (!csvFile) {
+      alert('Please select a CSV file');
+      return;
+    }
+
+    try {
+      setCsvUploading(true);
+      setCsvUploadResult(null);
+      
+      const adminSecret = getAdminSecret();
+      const formData = new FormData();
+      formData.append('csv', csvFile);
+
+      const baseUrl = process.env.REACT_APP_API_URL || 'http://localhost:3940/api';
+      const url = `${baseUrl}/mcqs/upload-csv?adminSecret=${encodeURIComponent(adminSecret)}`;
+      
+      const response = await fetch(url, {
+        method: 'POST',
+        body: formData,
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || 'Failed to upload CSV');
+      }
+
+      setCsvUploadResult({
+        success: true,
+        message: data.message,
+        created: data.created,
+        errors: data.errors
+      });
+
+      // Reload questions
+      await loadQuestions();
+      
+      // Clear file
+      setCsvFile(null);
+      const fileInput = document.getElementById('csv-upload');
+      if (fileInput) fileInput.value = '';
+    } catch (error) {
+      setCsvUploadResult({
+        success: false,
+        message: error.message || 'Failed to upload CSV'
+      });
+    } finally {
+      setCsvUploading(false);
+    }
   };
 
   const handleAddMCQ = async () => {
@@ -140,12 +221,20 @@ export function QuestionEditor() {
         <p className="text-gray-600">Create and manage MCQ and essay type questions</p>
       </div>
 
-      <Tabs defaultValue="add" className="space-y-6">
-        <TabsList className="bg-white border border-gray-200 p-1 rounded-xl">
-          <TabsTrigger value="add" className="rounded-lg data-[state=active]:bg-gradient-to-r data-[state=active]:from-[#667eea] data-[state=active]:to-[#764ba2] data-[state=active]:text-white">
-            Add Question
+      <Tabs defaultValue="add" className="space-y-6" onValueChange={setActiveTab}>
+        <TabsList className="bg-white border border-gray-200 p-1.5 rounded-xl w-full max-w-2xl">
+          <TabsTrigger 
+            value="add" 
+            className="flex-1 rounded-lg data-[state=active]:bg-gradient-to-r data-[state=active]:from-[#667eea] data-[state=active]:to-[#764ba2] data-[state=active]:text-white data-[state=active]:shadow-md transition-all"
+          >
+            <Plus className="w-4 h-4 mr-2" />
+            Add Questions
           </TabsTrigger>
-          <TabsTrigger value="manage" className="rounded-lg data-[state=active]:bg-gradient-to-r data-[state=active]:from-[#667eea] data-[state=active]:to-[#764ba2] data-[state=active]:text-white">
+          <TabsTrigger 
+            value="manage" 
+            className="flex-1 rounded-lg data-[state=active]:bg-gradient-to-r data-[state=active]:from-[#667eea] data-[state=active]:to-[#764ba2] data-[state=active]:text-white data-[state=active]:shadow-md transition-all"
+          >
+            <Search className="w-4 h-4 mr-2" />
             Manage Questions
           </TabsTrigger>
         </TabsList>
@@ -153,15 +242,35 @@ export function QuestionEditor() {
         {/* Add Question Tab */}
         <TabsContent value="add" className="space-y-6">
           <Tabs defaultValue="mcq" className="space-y-6">
-            <TabsList className="bg-gray-50 p-1 rounded-xl">
-              <TabsTrigger value="mcq" className="rounded-lg">Add MCQ</TabsTrigger>
-              <TabsTrigger value="essay" className="rounded-lg">Add Essay Type</TabsTrigger>
+            <TabsList className="bg-gray-50 border border-gray-200 p-1.5 rounded-xl w-full max-w-3xl">
+              <TabsTrigger 
+                value="mcq" 
+                className="flex-1 rounded-lg data-[state=active]:bg-white data-[state=active]:shadow-sm data-[state=active]:text-[#667eea] data-[state=active]:font-semibold transition-all"
+              >
+                Single MCQ
+              </TabsTrigger>
+              <TabsTrigger 
+                value="csv" 
+                className="flex-1 rounded-lg data-[state=active]:bg-white data-[state=active]:shadow-sm data-[state=active]:text-[#667eea] data-[state=active]:font-semibold transition-all"
+              >
+                <Upload className="w-4 h-4 mr-2" />
+                CSV Upload
+              </TabsTrigger>
+              <TabsTrigger 
+                value="essay" 
+                className="flex-1 rounded-lg data-[state=active]:bg-white data-[state=active]:shadow-sm data-[state=active]:text-[#667eea] data-[state=active]:font-semibold transition-all"
+              >
+                Essay Type
+              </TabsTrigger>
             </TabsList>
 
             {/* MCQ Form */}
-            <TabsContent value="mcq">
-              <div className="bg-white rounded-2xl shadow-[0_4px_24px_rgba(0,0,0,0.06)] border border-gray-100 p-6 lg:p-8">
-                <h3 className="text-xl font-semibold text-gray-900 mb-6">Add Multiple Choice Question</h3>
+            <TabsContent value="mcq" className="mt-6">
+              <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-6 lg:p-8">
+                <div className="mb-6 pb-4 border-b border-gray-200">
+                  <h3 className="text-2xl font-bold text-gray-900 mb-2">Add Single MCQ</h3>
+                  <p className="text-sm text-gray-600">Create a new multiple choice question manually</p>
+                </div>
                 <div className="space-y-5">
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
                     <div className="space-y-2">
@@ -313,10 +422,133 @@ export function QuestionEditor() {
               </div>
             </TabsContent>
 
+            {/* CSV Upload Form */}
+            <TabsContent value="csv" className="mt-6">
+              <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-6 lg:p-8">
+                <div className="mb-6 pb-4 border-b border-gray-200">
+                  <h3 className="text-2xl font-bold text-gray-900 mb-2">Upload MCQs from CSV</h3>
+                  <p className="text-sm text-gray-600">Bulk upload multiple choice questions from a CSV file</p>
+                </div>
+                
+                <div className="space-y-6">
+                  {/* Instructions */}
+                  <div className="bg-blue-50 border border-blue-200 rounded-xl p-4">
+                    <div className="flex items-start gap-3">
+                      <FileText className="w-5 h-5 text-blue-600 mt-0.5 flex-shrink-0" />
+                      <div className="space-y-2 text-sm">
+                        <p className="font-semibold text-blue-900">CSV Format Requirements:</p>
+                        <ul className="list-disc list-inside space-y-1 text-blue-800">
+                          <li>CSV must include headers: <code className="bg-blue-100 px-1 rounded">question, optionA, optionB, optionC, optionD, answer</code></li>
+                          <li>Optional column: <code className="bg-blue-100 px-1 rounded">category</code></li>
+                          <li>Answer must be A, B, C, or D</li>
+                          <li>First row should be the header row</li>
+                        </ul>
+                        <p className="text-xs text-blue-700 mt-2">
+                          Example: <code className="bg-blue-100 px-1 rounded">"What is 2+2?","4","5","6","7","A","Math"</code>
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* File Upload */}
+                  <div className="space-y-3">
+                    <Label htmlFor="csv-upload">Select CSV File</Label>
+                    <label
+                      htmlFor="csv-upload"
+                      className="flex flex-col items-center justify-center w-full h-40 border-2 border-gray-300 border-dashed rounded-xl cursor-pointer bg-gray-50 hover:bg-gray-100 transition-colors"
+                    >
+                      <div className="flex flex-col items-center justify-center pt-5 pb-6">
+                        <Upload className="w-10 h-10 mb-2 text-gray-400" />
+                        <p className="mb-2 text-sm text-gray-500">
+                          <span className="font-semibold">Click to upload</span> or drag and drop
+                        </p>
+                        <p className="text-xs text-gray-500">CSV file only</p>
+                        {csvFile && (
+                          <p className="text-sm text-gray-700 mt-2 font-medium">
+                            Selected: {csvFile.name}
+                          </p>
+                        )}
+                      </div>
+                      <input
+                        id="csv-upload"
+                        type="file"
+                        accept=".csv"
+                        onChange={handleCSVFileChange}
+                        className="hidden"
+                        disabled={csvUploading}
+                      />
+                    </label>
+                  </div>
+
+                  {/* Upload Result */}
+                  {csvUploadResult && (
+                    <div className={`p-4 rounded-xl border ${
+                      csvUploadResult.success 
+                        ? 'bg-green-50 border-green-200' 
+                        : 'bg-red-50 border-red-200'
+                    }`}>
+                      <p className={`font-semibold ${
+                        csvUploadResult.success ? 'text-green-900' : 'text-red-900'
+                      }`}>
+                        {csvUploadResult.success ? '✓ Success!' : '✗ Error'}
+                      </p>
+                      <p className={`text-sm mt-1 ${
+                        csvUploadResult.success ? 'text-green-800' : 'text-red-800'
+                      }`}>
+                        {csvUploadResult.message}
+                      </p>
+                      {csvUploadResult.success && csvUploadResult.created !== undefined && (
+                        <p className="text-sm text-green-800 mt-1">
+                          Created {csvUploadResult.created} MCQ(s)
+                        </p>
+                      )}
+                      {csvUploadResult.errors && csvUploadResult.errors.length > 0 && (
+                        <div className="mt-2">
+                          <p className="text-sm font-semibold text-yellow-800">Errors:</p>
+                          <ul className="list-disc list-inside text-xs text-yellow-700 mt-1 space-y-1">
+                            {csvUploadResult.errors.slice(0, 5).map((error, idx) => (
+                              <li key={idx}>{error}</li>
+                            ))}
+                            {csvUploadResult.errors.length > 5 && (
+                              <li>... and {csvUploadResult.errors.length - 5} more errors</li>
+                            )}
+                          </ul>
+                        </div>
+                      )}
+                    </div>
+                  )}
+
+                  {/* Upload Button */}
+                  <div className="flex justify-end">
+                    <Button
+                      onClick={handleCSVUpload}
+                      disabled={!csvFile || csvUploading}
+                      className="px-8 py-3 rounded-xl bg-gradient-to-r from-[#667eea] to-[#764ba2] hover:opacity-90 text-white font-semibold disabled:opacity-50 disabled:cursor-not-allowed transition-all shadow-lg hover:shadow-xl"
+                    >
+                      {csvUploading ? (
+                        <>
+                          <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin mr-2"></div>
+                          Uploading...
+                        </>
+                      ) : (
+                        <>
+                          <Upload className="w-4 h-4 mr-2" />
+                          Upload CSV
+                        </>
+                      )}
+                    </Button>
+                  </div>
+                </div>
+              </div>
+            </TabsContent>
+
             {/* Essay Form */}
-            <TabsContent value="essay">
-              <div className="bg-white rounded-2xl shadow-[0_4px_24px_rgba(0,0,0,0.06)] border border-gray-100 p-6 lg:p-8">
-                <h3 className="text-xl font-semibold text-gray-900 mb-6">Add Essay Type Question</h3>
+            <TabsContent value="essay" className="mt-6">
+              <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-6 lg:p-8">
+                <div className="mb-6 pb-4 border-b border-gray-200">
+                  <h3 className="text-2xl font-bold text-gray-900 mb-2">Add Essay Type Question</h3>
+                  <p className="text-sm text-gray-600">Create a new essay type question</p>
+                </div>
                 <div className="space-y-5">
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
                     <div className="space-y-2">
@@ -383,29 +615,47 @@ export function QuestionEditor() {
         </TabsContent>
 
         {/* Manage Questions Tab */}
-        <TabsContent value="manage" className="space-y-6">
-          {/* Search */}
-          <div className="relative">
-            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
-            <Input
-              type="text"
-              placeholder="Search questions by ID, text, or category..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="pl-10 h-12 rounded-xl border-gray-200"
-            />
+        <TabsContent value="manage" className="space-y-6 mt-6">
+          {/* Header */}
+          <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-6">
+            <h3 className="text-2xl font-bold text-gray-900 mb-4">Manage Questions</h3>
+            <p className="text-sm text-gray-600 mb-4">Search, view, and delete existing questions</p>
+            
+            {/* Search */}
+            <div className="relative">
+              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
+              <Input
+                type="text"
+                placeholder="Search questions by ID, text, or category..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="pl-10 h-12 rounded-xl border-gray-200"
+              />
+            </div>
           </div>
 
           {loading ? (
             <div className="text-center py-12">
+              <div className="inline-block w-8 h-8 border-4 border-[#667eea] border-t-transparent rounded-full animate-spin mb-4"></div>
               <div className="text-xl text-gray-600">Loading questions...</div>
+            </div>
+          ) : questions.length === 0 ? (
+            <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-12 text-center">
+              <div className="inline-flex items-center justify-center w-16 h-16 bg-gray-100 rounded-full mb-4">
+                <Search className="w-8 h-8 text-gray-400" />
+              </div>
+              <h4 className="text-lg font-semibold text-gray-900 mb-2">No Questions Available</h4>
+              <p className="text-gray-600 mb-4">Start by adding your first question using the "Add Questions" tab.</p>
             </div>
           ) : (
             /* Questions List */
-            <div className="bg-white rounded-2xl shadow-[0_4px_24px_rgba(0,0,0,0.06)] border border-gray-100 overflow-hidden">
+            <div className="bg-white rounded-2xl shadow-sm border border-gray-200 overflow-hidden">
               <div className="divide-y divide-gray-100">
                 {filteredQuestions.length === 0 ? (
-                  <div className="p-6 text-center text-gray-500">No questions found</div>
+                  <div className="p-6 text-center">
+                    <p className="text-gray-500 mb-2">No questions match your search</p>
+                    <p className="text-sm text-gray-400">Try a different search term</p>
+                  </div>
                 ) : (
                   filteredQuestions.map((question) => (
                 <div key={question.id} className="p-6 hover:bg-gray-50 transition-colors">
@@ -478,6 +728,13 @@ export function QuestionEditor() {
                   ))
                 )}
               </div>
+            </div>
+          )}
+          
+          {/* Questions Count */}
+          {!loading && questions.length > 0 && (
+            <div className="text-center text-sm text-gray-500">
+              Showing {filteredQuestions.length} of {questions.length} question{questions.length !== 1 ? 's' : ''}
             </div>
           )}
         </TabsContent>

@@ -109,9 +109,15 @@ export const mcqAPI = {
     body: JSON.stringify({ userId, mcqId, selectedAnswer }),
   }),
 
-  getAll: (adminSecret) => apiRequest('/mcqs', {
-    adminSecret,
-  }),
+  getAll: (adminSecret) => {
+    // Use admin route if adminSecret is provided
+    if (adminSecret) {
+      return apiRequest('/mcqs/admin/all', {
+        adminSecret,
+      });
+    }
+    return apiRequest('/mcqs');
+  },
 
   getById: (mcqId, adminSecret) => apiRequest(`/mcqs/${mcqId}`, {
     adminSecret,

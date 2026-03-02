@@ -53,6 +53,17 @@ export function LandingPage() {
 
   return (
     <div className="min-h-screen bg-white">
+      {/* Language Switcher */}
+      <div className="absolute top-4 right-4 z-50">
+        <Button
+          onClick={() => navigate('/sin')}
+          variant="outline"
+          className="bg-white/90 backdrop-blur-sm border-gray-300 hover:bg-white"
+        >
+          සිංහල
+        </Button>
+      </div>
+
       {/* Hero Section */}
       <div className="relative bg-gradient-to-br from-[#667eea] via-[#764ba2] to-[#667eea] text-white overflow-hidden">
         {/* Animated Background Elements */}
@@ -104,7 +115,7 @@ export function LandingPage() {
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: 0.5, duration: 0.6 }}
-                className="flex flex-col sm:flex-row gap-4 justify-center"
+                className="flex justify-center"
               >
                 <Button
                   onClick={() => navigate('/login')}
@@ -112,14 +123,6 @@ export function LandingPage() {
                 >
                   <Sparkles className="w-5 h-5 mr-2" />
                   Get Started
-                </Button>
-                <Button
-                  onClick={() => navigate('/admin/login')}
-                  variant="outline"
-                  className="h-14 px-10 rounded-2xl border-2 border-white/50 bg-white/10 backdrop-blur-md text-white hover:bg-white/20 font-semibold text-lg shadow-xl hover:scale-105 transition-all duration-300"
-                >
-                  <Users className="w-5 h-5 mr-2" />
-                  Admin Portal
                 </Button>
               </motion.div>
             </motion.div>
@@ -461,21 +464,13 @@ export function LandingPage() {
             <p className="text-xl sm:text-2xl text-white/90 mb-10 max-w-2xl mx-auto">
               Join thousands of students who are already improving their skills and achieving their goals
             </p>
-            <div className="flex flex-col sm:flex-row gap-4 justify-center">
+            <div className="flex justify-center">
               <Button
                 onClick={() => navigate('/login')}
                 className="h-14 px-10 rounded-2xl bg-white text-[#667eea] hover:bg-white/95 font-semibold text-lg shadow-2xl hover:shadow-3xl hover:scale-105 transition-all duration-300"
               >
                 <Sparkles className="w-5 h-5 mr-2" />
                 Get Started Now
-              </Button>
-              <Button
-                onClick={() => navigate('/admin/login')}
-                variant="outline"
-                className="h-14 px-10 rounded-2xl border-2 border-white/50 bg-white/10 backdrop-blur-md text-white hover:bg-white/20 font-semibold text-lg shadow-xl hover:scale-105 transition-all duration-300"
-              >
-                <Users className="w-5 h-5 mr-2" />
-                Admin Login
               </Button>
             </div>
           </motion.div>

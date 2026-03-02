@@ -1,6 +1,7 @@
 import { BrowserRouter, Routes, Route } from 'react-router-dom';
 import { AuthProvider } from './context/AuthContext';
 import { LandingPage } from './components/LandingPage';
+import { LandingPageSinhala } from './components/LandingPageSinhala';
 import { WelcomeScreen } from './components/WelcomeScreen';
 import { LoginSignup } from './components/LoginSignup';
 import { AdminLogin } from './components/AdminLogin';
@@ -19,6 +20,7 @@ function App() {
       <BrowserRouter>
         <Routes>
           <Route path="/" element={<LandingPage />} />
+          <Route path="/sin" element={<LandingPageSinhala />} />
           <Route path="/welcome" element={<WelcomeScreen />} />
           <Route path="/login" element={<LoginSignup />} />
           <Route path="/admin/login" element={<AdminLogin />} />

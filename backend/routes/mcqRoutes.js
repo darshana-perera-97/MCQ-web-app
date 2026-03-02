@@ -6,10 +6,11 @@ import {
   getMcqById,
   createMcq,
   updateMcq,
-  deleteMcq
+  deleteMcq,
+  uploadMcqsFromCSV
 } from '../controllers/mcqController.js';
 import { adminAuth } from '../middleware/adminAuth.js';
-import { uploadMcqImage } from '../middleware/upload.js';
+import { uploadMcqImage, uploadCSV } from '../middleware/upload.js';
 
 const router = express.Router();
 
@@ -25,6 +26,7 @@ router.get('/admin/:id', adminAuth, getMcqById);
 
 // Admin routes
 router.post('/', adminAuth, uploadMcqImage.single('image'), createMcq);
+router.post('/upload-csv', adminAuth, uploadCSV.single('csv'), uploadMcqsFromCSV);
 router.put('/:id', adminAuth, uploadMcqImage.single('image'), updateMcq);
 router.delete('/:id', adminAuth, deleteMcq);
 

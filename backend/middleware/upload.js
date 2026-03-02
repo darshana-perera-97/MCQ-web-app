@@ -60,3 +60,27 @@ export const uploadMcqImage = multer({
   fileFilter: fileFilter
 });
 
+// CSV file upload storage (in memory for parsing)
+const csvStorage = multer.memoryStorage();
+
+// CSV file filter
+const csvFileFilter = (req, file, cb) => {
+  const allowedTypes = /csv|text\/csv|text\/plain/;
+  const extname = allowedTypes.test(path.extname(file.originalname).toLowerCase());
+  const mimetype = allowedTypes.test(file.mimetype) || file.mimetype === 'application/vnd.ms-excel';
+
+  if (mimetype || extname || file.originalname.toLowerCase().endsWith('.csv')) {
+    return cb(null, true);
+  } else {
+    cb(new Error('Only CSV files are allowed'));
+  }
+};
+
+export const uploadCSV = multer({
+  storage: csvStorage,
+  limits: {
+    fileSize: 10 * 1024 * 1024 // 10MB limit for CSV
+  },
+  fileFilter: csvFileFilter
+});
+
