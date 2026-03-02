@@ -27,11 +27,11 @@ export const getAnalytics = async (req, res) => {
     const inactiveUsers = students.filter(u => (u.seenMcqs?.length || 0) === 0).length;
     
     // Today's activity (users who attempted today)
-    const today = new Date().toISOString().split('T')[0];
+    const todayString = new Date().toISOString().split('T')[0];
     const todayActiveUsers = students.filter(u => {
       if (!u.lastAttemptDate) return false;
       const lastAttempt = new Date(u.lastAttemptDate).toISOString().split('T')[0];
-      return lastAttempt === today;
+      return lastAttempt === todayString;
     }).length;
 
     // Top 5 students by score
