@@ -7,14 +7,22 @@ import {
   Home,
   Menu,
   X,
-  Settings
+  Settings,
+  LogOut
 } from 'lucide-react';
 import { useState } from 'react';
 import { Button } from '../ui/button';
+import { useAuth } from '../../context/AuthContext';
 
 export function AdminLayout() {
   const navigate = useNavigate();
+  const { logout } = useAuth();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+
+  const handleLogout = () => {
+    logout();
+    navigate('/admin/login');
+  };
 
   const navigation = [
     { name: 'Dashboard', to: '/student/dashboard', icon: Home },
@@ -70,6 +78,19 @@ export function AdminLayout() {
                 </NavLink>
               ))}
             </nav>
+            <div className="p-4 border-t border-gray-200">
+              <Button
+                onClick={() => {
+                  handleLogout();
+                  setMobileMenuOpen(false);
+                }}
+                variant="ghost"
+                className="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-red-600 hover:bg-red-50 hover:text-red-700"
+              >
+                <LogOut className="w-5 h-5" />
+                <span className="font-medium">Logout</span>
+              </Button>
+            </div>
           </div>
         </div>
       )}
@@ -105,6 +126,18 @@ export function AdminLayout() {
                 </NavLink>
               ))}
             </nav>
+
+            {/* Logout Button */}
+            <div className="px-4 py-4 border-t border-gray-200">
+              <Button
+                onClick={handleLogout}
+                variant="ghost"
+                className="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-red-600 hover:bg-red-50 hover:text-red-700"
+              >
+                <LogOut className="w-5 h-5" />
+                <span className="font-medium">Logout</span>
+              </Button>
+            </div>
           </div>
         </div>
 

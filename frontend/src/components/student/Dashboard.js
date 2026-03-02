@@ -4,11 +4,16 @@ import { ProgressRing } from '../common/ProgressRing';
 import { useAuth } from '../../context/AuthContext';
 import { userAPI, mcqAPI } from '../../services/api';
 import { Button } from '../ui/button';
-import { BookOpen, TrendingUp, Award } from 'lucide-react';
+import { BookOpen, TrendingUp, Award, LogOut } from 'lucide-react';
 
 export function Dashboard() {
   const navigate = useNavigate();
-  const { user } = useAuth();
+  const { user, logout } = useAuth();
+
+  const handleLogout = () => {
+    logout();
+    navigate('/login');
+  };
   const [userStats, setUserStats] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -63,9 +68,19 @@ export function Dashboard() {
     <div className="min-h-screen bg-white">
       {/* Header */}
       <div className="bg-gradient-to-r from-[#667eea] to-[#764ba2] text-white px-4 sm:px-6 lg:px-8 py-8">
-        <div className="max-w-6xl mx-auto">
-          <h1 className="text-3xl font-semibold mb-2">Welcome back, {userStats.name}!</h1>
-          <p className="text-white/90">Ready to challenge yourself today?</p>
+        <div className="max-w-6xl mx-auto flex items-center justify-between">
+          <div>
+            <h1 className="text-3xl font-semibold mb-2">Welcome back, {userStats.name}!</h1>
+            <p className="text-white/90">Ready to challenge yourself today?</p>
+          </div>
+          <Button
+            onClick={handleLogout}
+            variant="ghost"
+            className="text-white hover:bg-white/20 flex items-center gap-2"
+          >
+            <LogOut className="w-5 h-5" />
+            <span>Logout</span>
+          </Button>
         </div>
       </div>
 
