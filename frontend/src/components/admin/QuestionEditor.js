@@ -1,0 +1,488 @@
+import { useState, useEffect } from 'react';
+import { mcqAPI, essayAPI, getAdminSecret } from '../../services/api';
+import { BACKEND_URL } from '../../config/api';
+import { Button } from '../ui/button';
+import { Input } from '../ui/input';
+import { Label } from '../ui/label';
+import { Textarea } from '../ui/textarea';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '../ui/tabs';
+import { Plus, Trash2, Search, Image as ImageIcon, X } from 'lucide-react';
+
+export function QuestionEditor() {
+  const [questions, setQuestions] = useState([]);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [loading, setLoading] = useState(true);
+  
+  // MCQ Form State
+  const [mcqForm, setMcqForm] = useState({
+    id: '',
+    questionText: '',
+    optionA: '',
+    optionB: '',
+    optionC: '',
+    optionD: '',
+    correctAnswer: 'A',
+    category: '',
+  });
+  const [mcqImage, setMcqImage] = useState(null);
+  const [mcqImagePreview, setMcqImagePreview] = useState(null);
+
+  // Essay Form State
+  const [essayForm, setEssayForm] = useState({
+    id: '',
+    question: '',
+    category: '',
+  });
+
+  useEffect(() => {
+    loadQuestions();
+  }, []);
+
+  const loadQuestions = async () => {
+    try {
+      setLoading(true);
+      const adminSecret = getAdminSecret();
+      const response = await mcqAPI.getAll(adminSecret);
+      setQuestions(response.mcqs || []);
+    } catch (err) {
+      console.error('Error loading questions:', err);
+      alert(err.message || 'Failed to load questions');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const filteredQuestions = questions.filter(
+    (q) =>
+      q.question?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      q.id?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      (q.category && q.category.toLowerCase().includes(searchQuery.toLowerCase()))
+  );
+
+  const handleImageChange = (e) => {
+    const file = e.target.files[0];
+    if (file) {
+      if (file.size > 5 * 1024 * 1024) {
+        alert('Image size must be less than 5MB');
+        return;
+      }
+      setMcqImage(file);
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setMcqImagePreview(reader.result);
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
+  const handleRemoveImage = () => {
+    setMcqImage(null);
+    setMcqImagePreview(null);
+  };
+
+  const handleAddMCQ = async () => {
+    if (!mcqForm.id || !mcqForm.questionText || !mcqForm.optionA) {
+      window.alert('Please fill in all required fields');
+      return;
+    }
+
+    try {
+      const adminSecret = getAdminSecret();
+      const newMCQ = {
+        id: mcqForm.id,
+        question: mcqForm.questionText,
+        optionA: mcqForm.optionA,
+        optionB: mcqForm.optionB,
+        optionC: mcqForm.optionC,
+        optionD: mcqForm.optionD,
+        answer: mcqForm.correctAnswer,
+        category: mcqForm.category || null,
+      };
+
+      await mcqAPI.create(newMCQ, adminSecret, mcqImage);
+      await loadQuestions();
+      
+      // Reset form
+      setMcqForm({
+        id: '',
+        questionText: '',
+        optionA: '',
+        optionB: '',
+        optionC: '',
+        optionD: '',
+        correctAnswer: 'A',
+        category: '',
+      });
+      setMcqImage(null);
+      setMcqImagePreview(null);
+    } catch (err) {
+      alert(err.message || 'Failed to create MCQ');
+    }
+  };
+
+  const handleDeleteQuestion = async (id) => {
+    if (!window.confirm('Are you sure you want to delete this question?')) return;
+    
+    try {
+      const adminSecret = getAdminSecret();
+      await mcqAPI.delete(id, adminSecret);
+      await loadQuestions();
+    } catch (err) {
+      alert(err.message || 'Failed to delete question');
+    }
+  };
+
+  return (
+    <div className="p-6 lg:p-8">
+      {/* Header */}
+      <div className="mb-8">
+        <h1 className="text-3xl font-semibold text-gray-900 mb-2">Question Editor</h1>
+        <p className="text-gray-600">Create and manage MCQ and essay type questions</p>
+      </div>
+
+      <Tabs defaultValue="add" className="space-y-6">
+        <TabsList className="bg-white border border-gray-200 p-1 rounded-xl">
+          <TabsTrigger value="add" className="rounded-lg data-[state=active]:bg-gradient-to-r data-[state=active]:from-[#667eea] data-[state=active]:to-[#764ba2] data-[state=active]:text-white">
+            Add Question
+          </TabsTrigger>
+          <TabsTrigger value="manage" className="rounded-lg data-[state=active]:bg-gradient-to-r data-[state=active]:from-[#667eea] data-[state=active]:to-[#764ba2] data-[state=active]:text-white">
+            Manage Questions
+          </TabsTrigger>
+        </TabsList>
+
+        {/* Add Question Tab */}
+        <TabsContent value="add" className="space-y-6">
+          <Tabs defaultValue="mcq" className="space-y-6">
+            <TabsList className="bg-gray-50 p-1 rounded-xl">
+              <TabsTrigger value="mcq" className="rounded-lg">Add MCQ</TabsTrigger>
+              <TabsTrigger value="essay" className="rounded-lg">Add Essay Type</TabsTrigger>
+            </TabsList>
+
+            {/* MCQ Form */}
+            <TabsContent value="mcq">
+              <div className="bg-white rounded-2xl shadow-[0_4px_24px_rgba(0,0,0,0.06)] border border-gray-100 p-6 lg:p-8">
+                <h3 className="text-xl font-semibold text-gray-900 mb-6">Add Multiple Choice Question</h3>
+                <div className="space-y-5">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+                    <div className="space-y-2">
+                      <Label htmlFor="mcq-id">Question ID *</Label>
+                      <Input
+                        id="mcq-id"
+                        placeholder="e.g., MCQ-011"
+                        value={mcqForm.id}
+                        onChange={(e) => setMcqForm({ ...mcqForm, id: e.target.value })}
+                        className="rounded-xl border-gray-200"
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="mcq-category">Category (Optional)</Label>
+                      <Input
+                        id="mcq-category"
+                        placeholder="e.g., JavaScript, React, etc."
+                        value={mcqForm.category}
+                        onChange={(e) => setMcqForm({ ...mcqForm, category: e.target.value })}
+                        className="rounded-xl border-gray-200"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="mcq-question">Question Text *</Label>
+                    <Textarea
+                      id="mcq-question"
+                      placeholder="Enter your question here..."
+                      value={mcqForm.questionText}
+                      onChange={(e) => setMcqForm({ ...mcqForm, questionText: e.target.value })}
+                      className="rounded-xl border-gray-200 min-h-[100px]"
+                    />
+                  </div>
+
+                  {/* Image Upload */}
+                  <div className="space-y-2">
+                    <Label htmlFor="mcq-image">Question Image (Optional)</Label>
+                    <div className="space-y-3">
+                      {mcqImagePreview ? (
+                        <div className="relative">
+                          <img
+                            src={mcqImagePreview}
+                            alt="Preview"
+                            className="w-full max-w-md h-auto rounded-xl border border-gray-200"
+                          />
+                          <button
+                            type="button"
+                            onClick={handleRemoveImage}
+                            className="absolute top-2 right-2 p-2 bg-red-500 text-white rounded-full hover:bg-red-600 transition-colors"
+                          >
+                            <X className="w-4 h-4" />
+                          </button>
+                        </div>
+                      ) : (
+                        <label
+                          htmlFor="mcq-image-upload"
+                          className="flex flex-col items-center justify-center w-full h-32 border-2 border-gray-300 border-dashed rounded-xl cursor-pointer bg-gray-50 hover:bg-gray-100 transition-colors"
+                        >
+                          <div className="flex flex-col items-center justify-center pt-5 pb-6">
+                            <ImageIcon className="w-10 h-10 mb-2 text-gray-400" />
+                            <p className="mb-2 text-sm text-gray-500">
+                              <span className="font-semibold">Click to upload</span> or drag and drop
+                            </p>
+                            <p className="text-xs text-gray-500">PNG, JPG, GIF up to 5MB</p>
+                          </div>
+                          <input
+                            id="mcq-image-upload"
+                            type="file"
+                            accept="image/*"
+                            onChange={handleImageChange}
+                            className="hidden"
+                          />
+                        </label>
+                      )}
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+                    <div className="space-y-2">
+                      <Label htmlFor="option-a">Option A *</Label>
+                      <Input
+                        id="option-a"
+                        placeholder="First option"
+                        value={mcqForm.optionA}
+                        onChange={(e) => setMcqForm({ ...mcqForm, optionA: e.target.value })}
+                        className="rounded-xl border-gray-200"
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="option-b">Option B *</Label>
+                      <Input
+                        id="option-b"
+                        placeholder="Second option"
+                        value={mcqForm.optionB}
+                        onChange={(e) => setMcqForm({ ...mcqForm, optionB: e.target.value })}
+                        className="rounded-xl border-gray-200"
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="option-c">Option C *</Label>
+                      <Input
+                        id="option-c"
+                        placeholder="Third option"
+                        value={mcqForm.optionC}
+                        onChange={(e) => setMcqForm({ ...mcqForm, optionC: e.target.value })}
+                        className="rounded-xl border-gray-200"
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="option-d">Option D *</Label>
+                      <Input
+                        id="option-d"
+                        placeholder="Fourth option"
+                        value={mcqForm.optionD}
+                        onChange={(e) => setMcqForm({ ...mcqForm, optionD: e.target.value })}
+                        className="rounded-xl border-gray-200"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="correct-answer">Correct Answer *</Label>
+                    <div className="flex gap-3">
+                      {['A', 'B', 'C', 'D'].map((option) => (
+                        <button
+                          key={option}
+                          onClick={() => setMcqForm({ ...mcqForm, correctAnswer: option })}
+                          className={`flex-1 py-3 rounded-xl font-medium transition-all ${
+                            mcqForm.correctAnswer === option
+                              ? 'bg-gradient-to-r from-[#667eea] to-[#764ba2] text-white shadow-lg'
+                              : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                          }`}
+                        >
+                          {option}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  <Button
+                    onClick={handleAddMCQ}
+                    className="w-full h-12 rounded-xl bg-gradient-to-r from-[#667eea] to-[#764ba2] hover:opacity-90 text-white gap-2 shadow-sm"
+                  >
+                    <Plus className="w-5 h-5" />
+                    Add MCQ Question
+                  </Button>
+                </div>
+              </div>
+            </TabsContent>
+
+            {/* Essay Form */}
+            <TabsContent value="essay">
+              <div className="bg-white rounded-2xl shadow-[0_4px_24px_rgba(0,0,0,0.06)] border border-gray-100 p-6 lg:p-8">
+                <h3 className="text-xl font-semibold text-gray-900 mb-6">Add Essay Type Question</h3>
+                <div className="space-y-5">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+                    <div className="space-y-2">
+                      <Label htmlFor="essay-id">Question ID *</Label>
+                      <Input
+                        id="essay-id"
+                        placeholder="e.g., ESSAY-001"
+                        value={essayForm.id}
+                        onChange={(e) => setEssayForm({ ...essayForm, id: e.target.value })}
+                        className="rounded-xl border-gray-200"
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="essay-category">Category (Optional)</Label>
+                      <Input
+                        id="essay-category"
+                        placeholder="e.g., Programming, Theory, etc."
+                        value={essayForm.category}
+                        onChange={(e) => setEssayForm({ ...essayForm, category: e.target.value })}
+                        className="rounded-xl border-gray-200"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="essay-question">Question Text *</Label>
+                    <Textarea
+                      id="essay-question"
+                      placeholder="Enter your essay question here..."
+                      value={essayForm.question}
+                      onChange={(e) => setEssayForm({ ...essayForm, question: e.target.value })}
+                      className="rounded-xl border-gray-200 min-h-[150px]"
+                    />
+                  </div>
+
+                  <Button
+                    onClick={async () => {
+                      if (!essayForm.id || !essayForm.question) {
+                        alert('Please fill in all required fields');
+                        return;
+                      }
+                      try {
+                        const adminSecret = getAdminSecret();
+                        await essayAPI.create({
+                          id: essayForm.id,
+                          question: essayForm.question,
+                          category: essayForm.category || null,
+                        }, adminSecret);
+                        setEssayForm({ id: '', question: '', category: '' });
+                        alert('Essay question created successfully');
+                      } catch (err) {
+                        alert(err.message || 'Failed to create essay question');
+                      }
+                    }}
+                    className="w-full h-12 rounded-xl bg-gradient-to-r from-[#00c6ff] to-[#0072ff] hover:opacity-90 text-white gap-2 shadow-sm"
+                  >
+                    <Plus className="w-5 h-5" />
+                    Add Essay Question
+                  </Button>
+                </div>
+              </div>
+            </TabsContent>
+          </Tabs>
+        </TabsContent>
+
+        {/* Manage Questions Tab */}
+        <TabsContent value="manage" className="space-y-6">
+          {/* Search */}
+          <div className="relative">
+            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
+            <Input
+              type="text"
+              placeholder="Search questions by ID, text, or category..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="pl-10 h-12 rounded-xl border-gray-200"
+            />
+          </div>
+
+          {loading ? (
+            <div className="text-center py-12">
+              <div className="text-xl text-gray-600">Loading questions...</div>
+            </div>
+          ) : (
+            /* Questions List */
+            <div className="bg-white rounded-2xl shadow-[0_4px_24px_rgba(0,0,0,0.06)] border border-gray-100 overflow-hidden">
+              <div className="divide-y divide-gray-100">
+                {filteredQuestions.length === 0 ? (
+                  <div className="p-6 text-center text-gray-500">No questions found</div>
+                ) : (
+                  filteredQuestions.map((question) => (
+                <div key={question.id} className="p-6 hover:bg-gray-50 transition-colors">
+                  <div className="flex items-start justify-between gap-4">
+                    <div className="flex-1">
+                      <div className="flex items-center gap-3 mb-3">
+                        <div className="inline-flex items-center px-3 py-1 rounded-lg bg-gradient-to-r from-[#667eea]/20 to-[#764ba2]/20">
+                          <span className="text-sm font-semibold bg-gradient-to-r from-[#667eea] to-[#764ba2] bg-clip-text text-transparent">
+                            {question.id}
+                          </span>
+                        </div>
+                        {question.category && (
+                          <div className="inline-flex items-center px-3 py-1 rounded-lg bg-gray-100">
+                            <span className="text-sm font-medium text-gray-600">
+                              {question.category}
+                            </span>
+                          </div>
+                        )}
+                      </div>
+                      <p className="text-gray-900 font-medium mb-3">{question.question}</p>
+                      {question.image && (
+                        <div className="mb-3 rounded-lg overflow-hidden border border-gray-200 max-w-md">
+                          <img
+                            src={`${BACKEND_URL}${question.image}`}
+                            alt="Question"
+                            className="w-full h-auto max-h-48 object-contain bg-gray-50"
+                            onError={(e) => {
+                              e.target.style.display = 'none';
+                            }}
+                          />
+                        </div>
+                      )}
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                        {[
+                          { label: 'A', text: question.optionA },
+                          { label: 'B', text: question.optionB },
+                          { label: 'C', text: question.optionC },
+                          { label: 'D', text: question.optionD },
+                        ].map((option) => (
+                          <div
+                            key={option.label}
+                            className={`flex items-center gap-2 p-2 rounded-lg ${
+                              option.label === question.answer
+                                ? 'bg-green-50 border border-green-200'
+                                : 'bg-gray-50'
+                            }`}
+                          >
+                            <div className={`flex-shrink-0 w-6 h-6 rounded-md flex items-center justify-center text-sm font-semibold ${
+                              option.label === question.answer
+                                ? 'bg-green-500 text-white'
+                                : 'bg-gray-200 text-gray-600'
+                            }`}>
+                              {option.label}
+                            </div>
+                            <span className="text-sm text-gray-700">{option.text}</span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => handleDeleteQuestion(question.id)}
+                      className="rounded-lg hover:bg-red-50 hover:text-red-600 flex-shrink-0"
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </Button>
+                  </div>
+                </div>
+                  ))
+                )}
+              </div>
+            </div>
+          )}
+        </TabsContent>
+      </Tabs>
+    </div>
+  );
+}
+
