@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { analyticsAPI, getAdminSecret } from '../../services/api';
-import { Users, BookOpen, Target, TrendingUp } from 'lucide-react';
+import { Users, BookOpen, Target, TrendingUp, UserCheck, UserX, Clock, Activity } from 'lucide-react';
 import {
   BarChart,
   Bar,
@@ -21,7 +21,13 @@ export function Analytics() {
     totalStudents: 0,
     totalQuestions: 0,
     totalAttempts: 0,
-    averageScore: 0
+    averageScore: 0,
+    pendingUsers: 0,
+    approvedUsers: 0,
+    rejectedUsers: 0,
+    activeUsers: 0,
+    inactiveUsers: 0,
+    todayActiveUsers: 0
   });
   const [studentData, setStudentData] = useState([]);
   const [categoryData, setCategoryData] = useState([]);
@@ -42,7 +48,13 @@ export function Analytics() {
         totalStudents: response.totalStudents || 0,
         totalQuestions: response.totalQuestions || 0,
         totalAttempts: response.totalAttempts || 0,
-        averageScore: response.averageScore || 0
+        averageScore: response.averageScore || 0,
+        pendingUsers: response.pendingUsers || 0,
+        approvedUsers: response.approvedUsers || 0,
+        rejectedUsers: response.rejectedUsers || 0,
+        activeUsers: response.activeUsers || 0,
+        inactiveUsers: response.inactiveUsers || 0,
+        todayActiveUsers: response.todayActiveUsers || 0
       });
 
       // Top 5 students by score
@@ -105,52 +117,141 @@ export function Analytics() {
         <p className="text-gray-600">Monitor platform performance and student engagement</p>
       </div>
 
-      {/* Stats Grid */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-        <div className="bg-white rounded-2xl shadow-[0_4px_24px_rgba(0,0,0,0.06)] border border-gray-100 p-6">
-          <div className="flex items-center gap-4">
-            <div className="p-4 bg-gradient-to-br from-[#667eea] to-[#764ba2] rounded-2xl">
-              <Users className="w-6 h-6 text-white" />
+      {/* Basic Stats Grid - Primary Metrics */}
+      <div className="mb-6">
+        <h2 className="text-xl font-semibold text-gray-900 mb-4">Overview</h2>
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+          <div className="bg-white rounded-2xl shadow-[0_4px_24px_rgba(0,0,0,0.06)] border border-gray-100 p-6">
+            <div className="flex items-center gap-4">
+              <div className="p-4 bg-gradient-to-br from-[#667eea] to-[#764ba2] rounded-2xl">
+                <Users className="w-6 h-6 text-white" />
+              </div>
+              <div>
+                <div className="text-2xl font-semibold text-gray-900">{analytics.totalStudents}</div>
+                <div className="text-sm text-gray-500">Total Students</div>
+              </div>
             </div>
-            <div>
-              <div className="text-2xl font-semibold text-gray-900">{analytics.totalStudents}</div>
-              <div className="text-sm text-gray-500">Total Students</div>
+          </div>
+
+          <div className="bg-white rounded-2xl shadow-[0_4px_24px_rgba(0,0,0,0.06)] border border-gray-100 p-6">
+            <div className="flex items-center gap-4">
+              <div className="p-4 bg-gradient-to-br from-[#00c6ff] to-[#0072ff] rounded-2xl">
+                <BookOpen className="w-6 h-6 text-white" />
+              </div>
+              <div>
+                <div className="text-2xl font-semibold text-gray-900">{analytics.totalQuestions}</div>
+                <div className="text-sm text-gray-500">Total Questions</div>
+              </div>
+            </div>
+          </div>
+
+          <div className="bg-white rounded-2xl shadow-[0_4px_24px_rgba(0,0,0,0.06)] border border-gray-100 p-6">
+            <div className="flex items-center gap-4">
+              <div className="p-4 bg-gradient-to-br from-[#84fab0] to-[#8fd3f4] rounded-2xl">
+                <Target className="w-6 h-6 text-white" />
+              </div>
+              <div>
+                <div className="text-2xl font-semibold text-gray-900">{analytics.totalAttempts}</div>
+                <div className="text-sm text-gray-500">Total Attempts</div>
+              </div>
+            </div>
+          </div>
+
+          <div className="bg-white rounded-2xl shadow-[0_4px_24px_rgba(0,0,0,0.06)] border border-gray-100 p-6">
+            <div className="flex items-center gap-4">
+              <div className="p-4 bg-gradient-to-br from-[#764ba2] to-[#667eea] rounded-2xl">
+                <TrendingUp className="w-6 h-6 text-white" />
+              </div>
+              <div>
+                <div className="text-2xl font-semibold text-gray-900">{analytics.averageScore}</div>
+                <div className="text-sm text-gray-500">Average Score</div>
+              </div>
             </div>
           </div>
         </div>
+      </div>
 
-        <div className="bg-white rounded-2xl shadow-[0_4px_24px_rgba(0,0,0,0.06)] border border-gray-100 p-6">
-          <div className="flex items-center gap-4">
-            <div className="p-4 bg-gradient-to-br from-[#00c6ff] to-[#0072ff] rounded-2xl">
-              <BookOpen className="w-6 h-6 text-white" />
+      {/* User Status Stats */}
+      <div className="mb-6">
+        <h2 className="text-xl font-semibold text-gray-900 mb-4">User Status</h2>
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+          <div className="bg-yellow-50 rounded-2xl shadow-[0_4px_24px_rgba(0,0,0,0.06)] border border-yellow-200 p-6">
+            <div className="flex items-center gap-4">
+              <div className="p-4 bg-yellow-500 rounded-2xl">
+                <Clock className="w-6 h-6 text-white" />
+              </div>
+              <div>
+                <div className="text-2xl font-semibold text-yellow-900">{analytics.pendingUsers}</div>
+                <div className="text-sm text-yellow-700">Pending Approval</div>
+              </div>
             </div>
-            <div>
-              <div className="text-2xl font-semibold text-gray-900">{analytics.totalQuestions}</div>
-              <div className="text-sm text-gray-500">Total Questions</div>
+          </div>
+
+          <div className="bg-green-50 rounded-2xl shadow-[0_4px_24px_rgba(0,0,0,0.06)] border border-green-200 p-6">
+            <div className="flex items-center gap-4">
+              <div className="p-4 bg-green-500 rounded-2xl">
+                <UserCheck className="w-6 h-6 text-white" />
+              </div>
+              <div>
+                <div className="text-2xl font-semibold text-green-900">{analytics.approvedUsers}</div>
+                <div className="text-sm text-green-700">Approved Users</div>
+              </div>
+            </div>
+          </div>
+
+          <div className="bg-red-50 rounded-2xl shadow-[0_4px_24px_rgba(0,0,0,0.06)] border border-red-200 p-6">
+            <div className="flex items-center gap-4">
+              <div className="p-4 bg-red-500 rounded-2xl">
+                <UserX className="w-6 h-6 text-white" />
+              </div>
+              <div>
+                <div className="text-2xl font-semibold text-red-900">{analytics.rejectedUsers}</div>
+                <div className="text-sm text-red-700">Rejected Users</div>
+              </div>
+            </div>
+          </div>
+
+          <div className="bg-blue-50 rounded-2xl shadow-[0_4px_24px_rgba(0,0,0,0.06)] border border-blue-200 p-6">
+            <div className="flex items-center gap-4">
+              <div className="p-4 bg-blue-500 rounded-2xl">
+                <Activity className="w-6 h-6 text-white" />
+              </div>
+              <div>
+                <div className="text-2xl font-semibold text-blue-900">{analytics.todayActiveUsers}</div>
+                <div className="text-sm text-blue-700">Active Today</div>
+              </div>
             </div>
           </div>
         </div>
+      </div>
 
-        <div className="bg-white rounded-2xl shadow-[0_4px_24px_rgba(0,0,0,0.06)] border border-gray-100 p-6">
-          <div className="flex items-center gap-4">
-            <div className="p-4 bg-gradient-to-br from-[#84fab0] to-[#8fd3f4] rounded-2xl">
-              <Target className="w-6 h-6 text-white" />
-            </div>
-            <div>
-              <div className="text-2xl font-semibold text-gray-900">{analytics.totalAttempts}</div>
-              <div className="text-sm text-gray-500">Total Attempts</div>
+      {/* Activity Stats */}
+      <div className="mb-8">
+        <h2 className="text-xl font-semibold text-gray-900 mb-4">Activity Overview</h2>
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+          <div className="bg-white rounded-2xl shadow-[0_4px_24px_rgba(0,0,0,0.06)] border border-gray-100 p-6">
+            <div className="flex items-center justify-between">
+              <div>
+                <div className="text-3xl font-semibold text-gray-900">{analytics.activeUsers}</div>
+                <div className="text-sm text-gray-500 mt-1">Active Users</div>
+                <div className="text-xs text-gray-400 mt-1">Users who have attempted questions</div>
+              </div>
+              <div className="p-4 bg-gradient-to-br from-[#84fab0] to-[#8fd3f4] rounded-2xl">
+                <Activity className="w-8 h-8 text-white" />
+              </div>
             </div>
           </div>
-        </div>
 
-        <div className="bg-white rounded-2xl shadow-[0_4px_24px_rgba(0,0,0,0.06)] border border-gray-100 p-6">
-          <div className="flex items-center gap-4">
-            <div className="p-4 bg-gradient-to-br from-[#764ba2] to-[#667eea] rounded-2xl">
-              <TrendingUp className="w-6 h-6 text-white" />
-            </div>
-            <div>
-              <div className="text-2xl font-semibold text-gray-900">{analytics.averageScore}</div>
-              <div className="text-sm text-gray-500">Average Score</div>
+          <div className="bg-white rounded-2xl shadow-[0_4px_24px_rgba(0,0,0,0.06)] border border-gray-100 p-6">
+            <div className="flex items-center justify-between">
+              <div>
+                <div className="text-3xl font-semibold text-gray-900">{analytics.inactiveUsers}</div>
+                <div className="text-sm text-gray-500 mt-1">Inactive Users</div>
+                <div className="text-xs text-gray-400 mt-1">Users who haven't attempted yet</div>
+              </div>
+              <div className="p-4 bg-gradient-to-br from-[#9ca3af] to-[#6b7280] rounded-2xl">
+                <UserX className="w-8 h-8 text-white" />
+              </div>
             </div>
           </div>
         </div>

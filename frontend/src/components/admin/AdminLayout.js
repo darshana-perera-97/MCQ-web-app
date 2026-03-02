@@ -25,7 +25,7 @@ export function AdminLayout() {
   };
 
   const navigation = [
-    { name: 'Dashboard', to: '/student/dashboard', icon: Home },
+    { name: 'Dashboard', to: '/admin/dashboard', icon: Home },
     { name: 'User Management', to: '/admin/users', icon: Users },
     { name: 'Question Editor', to: '/admin/questions', icon: BookOpen },
     { name: 'Notifications', to: '/admin/notifications', icon: Bell },

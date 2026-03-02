@@ -19,6 +19,21 @@ export const getAnalytics = async (req, res) => {
     const totalScore = students.reduce((sum, u) => sum + (u.score || 0), 0);
     const averageScore = students.length > 0 ? Math.round(totalScore / students.length) : 0;
 
+    // Additional basic stats
+    const pendingUsers = students.filter(u => (u.status || 'pending') === 'pending').length;
+    const approvedUsers = students.filter(u => (u.status || 'approved') === 'approved').length;
+    const rejectedUsers = students.filter(u => u.status === 'rejected').length;
+    const activeUsers = students.filter(u => (u.seenMcqs?.length || 0) > 0).length;
+    const inactiveUsers = students.filter(u => (u.seenMcqs?.length || 0) === 0).length;
+    
+    // Today's activity (users who attempted today)
+    const today = new Date().toISOString().split('T')[0];
+    const todayActiveUsers = students.filter(u => {
+      if (!u.lastAttemptDate) return false;
+      const lastAttempt = new Date(u.lastAttemptDate).toISOString().split('T')[0];
+      return lastAttempt === today;
+    }).length;
+
     // Top 5 students by score
     const topStudents = students
       .map(u => ({
@@ -95,6 +110,12 @@ export const getAnalytics = async (req, res) => {
       totalQuestions: mcqs.length,
       totalAttempts,
       averageScore,
+      pendingUsers,
+      approvedUsers,
+      rejectedUsers,
+      activeUsers,
+      inactiveUsers,
+      todayActiveUsers,
       topStudents,
       categoryData,
       dailyData

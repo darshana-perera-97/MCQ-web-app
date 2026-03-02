@@ -8,6 +8,7 @@ import { AdminLogin } from './components/AdminLogin';
 import { Dashboard } from './components/student/Dashboard';
 import { QuizInterface } from './components/student/QuizInterface';
 import { AdminLayout } from './components/admin/AdminLayout';
+import { AdminDashboard } from './components/admin/AdminDashboard';
 import { UserManagement } from './components/admin/UserManagement';
 import { QuestionEditor } from './components/admin/QuestionEditor';
 import { NotificationComposer } from './components/admin/NotificationComposer';
@@ -27,6 +28,8 @@ function App() {
           <Route path="/student/dashboard" element={<Dashboard />} />
           <Route path="/quiz" element={<QuizInterface />} />
           <Route path="/admin" element={<AdminLayout />}>
+            <Route index element={<AdminDashboard />} />
+            <Route path="dashboard" element={<AdminDashboard />} />
             <Route path="users" element={<UserManagement />} />
             <Route path="questions" element={<QuestionEditor />} />
             <Route path="notifications" element={<NotificationComposer />} />
