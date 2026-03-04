@@ -2,11 +2,12 @@ import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ProgressRing } from '../common/ProgressRing';
 import { useAuth } from '../../context/AuthContext';
-import { userAPI, mcqAPI, essayAPI } from '../../services/api';
+import { userAPI, mcqAPI, essayAPI, notificationAPI } from '../../services/api';
 import { Button } from '../ui/button';
 import { BookOpen, TrendingUp, Award, LogOut, FileText, Bell, PenTool } from 'lucide-react';
 import { MaterialsModal } from './MaterialsModal';
 import { EssaysModal } from './EssaysModal';
+import { NotificationsDrawer } from './NotificationsDrawer';
 
 export function Dashboard() {
   const navigate = useNavigate();
@@ -21,9 +22,11 @@ export function Dashboard() {
   const [error, setError] = useState(null);
   const [materialsModalOpen, setMaterialsModalOpen] = useState(false);
   const [essaysModalOpen, setEssaysModalOpen] = useState(false);
+  const [notificationsDrawerOpen, setNotificationsDrawerOpen] = useState(false);
   const [essays, setEssays] = useState([]);
   const [notificationsEnabled, setNotificationsEnabled] = useState(true);
   const [savingPreferences, setSavingPreferences] = useState(false);
+  const [hasNewNotifications, setHasNewNotifications] = useState(false);
 
   useEffect(() => {
     if (!user) {
@@ -33,7 +36,17 @@ export function Dashboard() {
     loadUserStats();
     loadNotificationPreferences();
     loadEssays();
+    checkNewNotifications();
   }, [user, navigate]);
+
+  useEffect(() => {
+    // Check for new notifications every 5 minutes
+    const interval = setInterval(() => {
+      checkNewNotifications();
+    }, 5 * 60 * 1000); // 5 minutes
+
+    return () => clearInterval(interval);
+  }, []);
 
   const loadEssays = async () => {
     try {
@@ -41,6 +54,22 @@ export function Dashboard() {
       setEssays(response.essays || []);
     } catch (err) {
       console.error('Error loading essays:', err);
+    }
+  };
+
+  const checkNewNotifications = async () => {
+    try {
+      const response = await notificationAPI.getAll();
+      const notifications = response.notifications || [];
+      const now = new Date();
+      const hasNew = notifications.some((notification) => {
+        const notificationDate = new Date(notification.createdAt);
+        const diffInHours = (now - notificationDate) / (1000 * 60 * 60);
+        return diffInHours < 24; // Less than 24 hours old
+      });
+      setHasNewNotifications(hasNew);
+    } catch (err) {
+      console.error('Error checking notifications:', err);
     }
   };
 
@@ -121,14 +150,31 @@ export function Dashboard() {
             <h1 className="text-3xl font-semibold mb-2">Welcome back, {userStats.name}!</h1>
             <p className="text-white/90">Ready to challenge yourself today?</p>
           </div>
-          <Button
-            onClick={handleLogout}
-            variant="ghost"
-            className="text-white hover:bg-white/20 flex items-center gap-2"
-          >
-            <LogOut className="w-5 h-5" />
-            <span>Logout</span>
-          </Button>
+          <div className="flex items-center gap-3">
+            <Button
+              onClick={() => {
+                setNotificationsDrawerOpen(true);
+                setHasNewNotifications(false); // Clear the glow when drawer is opened
+              }}
+              className={`bg-white text-[#667eea] hover:bg-white/90 flex items-center gap-2 rounded-xl px-4 py-2 font-medium shadow-sm transition-all relative ${
+                hasNewNotifications ? 'ring-2 ring-[#667eea] ring-offset-2 animate-pulse' : ''
+              }`}
+              title="View notifications"
+            >
+              <Bell className={`w-5 h-5 ${hasNewNotifications ? 'animate-pulse' : ''}`} />
+              <span className="hidden sm:inline">Notifications</span>
+              {hasNewNotifications && (
+                <span className="absolute -top-1 -right-1 w-3 h-3 bg-red-500 rounded-full border-2 border-white animate-ping"></span>
+              )}
+            </Button>
+            <Button
+              onClick={handleLogout}
+              className="bg-white text-[#667eea] hover:bg-white/90 flex items-center gap-2 rounded-xl px-4 py-2 font-medium shadow-sm transition-all"
+            >
+              <LogOut className="w-5 h-5" />
+              <span className="hidden sm:inline">Logout</span>
+            </Button>
+          </div>
         </div>
       </div>
 
@@ -342,6 +388,12 @@ export function Dashboard() {
       <EssaysModal 
         open={essaysModalOpen} 
         onOpenChange={setEssaysModalOpen} 
+      />
+
+      {/* Notifications Drawer */}
+      <NotificationsDrawer
+        open={notificationsDrawerOpen}
+        onClose={() => setNotificationsDrawerOpen(false)}
       />
     </div>
   );

@@ -5,7 +5,7 @@ import { Button } from '../ui/button';
 import { Input } from '../ui/input';
 import { Label } from '../ui/label';
 import { Textarea } from '../ui/textarea';
-import { Send, Upload, X } from 'lucide-react';
+import { Send, Upload, X, Trash2 } from 'lucide-react';
 
 export function NotificationComposer() {
   const [title, setTitle] = useState('');
@@ -66,6 +66,21 @@ export function NotificationComposer() {
       await loadNotifications();
     } catch (err) {
       alert(err.message || 'Failed to send notification');
+    }
+  };
+
+  const handleDelete = async (notificationId) => {
+    if (!window.confirm('Are you sure you want to delete this notification?')) {
+      return;
+    }
+
+    try {
+      const adminSecret = getAdminSecret();
+      await notificationAPI.delete(notificationId, adminSecret);
+      alert('Notification deleted successfully!');
+      await loadNotifications();
+    } catch (err) {
+      alert(err.message || 'Failed to delete notification');
     }
   };
 
@@ -199,12 +214,29 @@ export function NotificationComposer() {
               {notifications.map((notification) => (
                 <div key={notification.id} className="p-6 hover:bg-gray-50 transition-colors">
                   <div className="flex items-start justify-between gap-4 mb-2">
-                    <h4 className="font-semibold text-gray-900">{notification.title}</h4>
-                    <span className="text-sm text-gray-500 whitespace-nowrap">
-                      {new Date(notification.createdAt).toLocaleDateString()}
-                    </span>
+                    <div className="flex-1">
+                      <h4 className="font-semibold text-gray-900 mb-1">{notification.title}</h4>
+                      <span className="text-sm text-gray-500">
+                        {new Date(notification.createdAt).toLocaleDateString('en-US', {
+                          year: 'numeric',
+                          month: 'short',
+                          day: 'numeric',
+                          hour: '2-digit',
+                          minute: '2-digit'
+                        })}
+                      </span>
+                    </div>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => handleDelete(notification.id)}
+                      className="flex-shrink-0 rounded-lg hover:bg-red-50 hover:text-red-600 text-gray-400"
+                      title="Delete notification"
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </Button>
                   </div>
-                  <p className="text-sm text-gray-600">{notification.message}</p>
+                  <p className="text-sm text-gray-600 mb-3">{notification.message}</p>
                   {notification.imagePath && (
                     <img 
                       src={`${BACKEND_URL}${notification.imagePath}`} 
