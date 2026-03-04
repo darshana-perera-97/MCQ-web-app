@@ -661,7 +661,7 @@ export function UserManagement() {
 
       {/* Edit User Dialog */}
       <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
-        <DialogContent className="sm:max-w-[500px] rounded-2xl">
+        <DialogContent className="sm:max-w-[500px] rounded-2xl bg-white">
           <DialogHeader>
             <DialogTitle>Edit User</DialogTitle>
             <DialogDescription>

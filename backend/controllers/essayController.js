@@ -34,20 +34,23 @@ export const getEssayById = async (req, res) => {
 
 export const createEssay = async (req, res) => {
   try {
-    const { question, category, answer } = req.body;
+    const { id, question, category, answer } = req.body;
 
     if (!question) {
       return res.status(400).json({ error: 'Question is required' });
     }
 
-    // Generate unique ID
-    const now = new Date();
-    const yymmdd = now.toISOString().slice(2, 10).replace(/-/g, '');
-    const random = Math.floor(Math.random() * 1000).toString().padStart(3, '0');
-    const id = `ESSAY-${yymmdd}-${random}`;
+    // Use provided ID or generate unique ID
+    let questionId = id;
+    if (!questionId) {
+      const now = new Date();
+      const yymmdd = now.toISOString().slice(2, 10).replace(/-/g, '');
+      const random = Math.floor(Math.random() * 1000).toString().padStart(3, '0');
+      questionId = `ESSAY-${yymmdd}-${random}`;
+    }
 
     const newEssay = {
-      id,
+      id: questionId,
       question,
       category: category || null,
       answer: answer || null,

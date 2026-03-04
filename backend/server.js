@@ -10,6 +10,9 @@ import notificationRoutes from './routes/notificationRoutes.js';
 import settingsRoutes from './routes/settingsRoutes.js';
 import adminRoutes from './routes/adminRoutes.js';
 import analyticsRoutes from './routes/analyticsRoutes.js';
+import whatsappRoutes from './routes/whatsappRoutes.js';
+import materialRoutes from './routes/materialRoutes.js';
+import { connectWhatsApp } from './services/whatsappService.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -17,8 +20,10 @@ const __dirname = path.dirname(__filename);
 // Load environment variables
 dotenv.config();
 
+// Import constants
+import { PORT, BACKEND_URL } from './config/constants.js';
+
 const app = express();
-const PORT = process.env.PORT || 3940;
 
 // Middleware
 app.use(cors());
@@ -27,6 +32,8 @@ app.use(express.urlencoded({ extended: true }));
 
 // Serve uploaded images
 app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
+// Serve uploaded files (PDFs)
+app.use('/data/files', express.static(path.join(__dirname, 'data/files')));
 
 // Request logging middleware (development only)
 if (process.env.NODE_ENV !== 'production') {
@@ -44,6 +51,8 @@ app.use('/api/notifications', notificationRoutes);
 app.use('/api/settings', settingsRoutes);
 app.use('/api/admin', adminRoutes);
 app.use('/api/analytics', analyticsRoutes);
+app.use('/api/whatsapp', whatsappRoutes);
+app.use('/api/materials', materialRoutes);
 
 // Health check route
 app.get('/api/health', (req, res) => {
@@ -109,8 +118,18 @@ app.get('*', (req, res) => {
 });
 
 // Start server
-app.listen(PORT, () => {
-  console.log(`🚀 Server is running on http://localhost:${PORT}`);
+app.listen(PORT, async () => {
+  console.log(`🚀 Server is running on ${BACKEND_URL}`);
   console.log(`📝 Environment: ${process.env.NODE_ENV || 'development'}`);
+  
+  // Auto-connect WhatsApp on server startup
+  try {
+    console.log('📱 Attempting to connect WhatsApp...');
+    await connectWhatsApp();
+    console.log('✅ WhatsApp connection initiated');
+  } catch (error) {
+    console.log('⚠️  WhatsApp auto-connect failed (this is normal if not previously connected):', error.message);
+    console.log('💡 You can connect WhatsApp manually from the Settings page');
+  }
 });
 

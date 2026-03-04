@@ -9,8 +9,7 @@ const steps = [
   { id: 1, title: 'Basic Info', icon: User },
   { id: 2, title: 'Contact', icon: Phone },
   { id: 3, title: 'Location', icon: MapPin },
-  { id: 4, title: 'Bio Data', icon: User },
-  { id: 5, title: 'Education', icon: GraduationCap },
+  { id: 4, title: 'Education', icon: GraduationCap },
 ];
 
 export function MultiStepSignup({ onSubmit, loading, error }) {
@@ -35,12 +34,7 @@ export function MultiStepSignup({ onSubmit, loading, error }) {
     country: '',
     timezone: '',
     
-    // Step 4: Bio Data
-    dateOfBirth: '',
-    gender: '',
-    nationality: '',
-    
-    // Step 5: Education
+    // Step 4: Education
     highestEducation: '',
     institution: '',
     fieldOfStudy: '',
@@ -82,11 +76,6 @@ export function MultiStepSignup({ onSubmit, loading, error }) {
         if (!formData.country.trim()) newErrors.country = 'Country is required';
         break;
       case 4:
-        if (!formData.dateOfBirth) newErrors.dateOfBirth = 'Date of birth is required';
-        if (!formData.gender) newErrors.gender = 'Gender is required';
-        if (!formData.nationality.trim()) newErrors.nationality = 'Nationality is required';
-        break;
-      case 5:
         if (!formData.highestEducation) newErrors.highestEducation = 'Highest education is required';
         if (!formData.institution.trim()) newErrors.institution = 'Institution is required';
         if (!formData.fieldOfStudy.trim()) newErrors.fieldOfStudy = 'Field of study is required';
@@ -454,74 +443,8 @@ export function MultiStepSignup({ onSubmit, loading, error }) {
           </div>
         )}
 
-        {/* Step 4: Bio Data */}
+        {/* Step 4: Education */}
         {currentStep === 4 && (
-          <div className="space-y-5 transition-all duration-300">
-            <div className="text-center mb-6">
-              <h2 className="text-xl font-semibold text-gray-900 mb-2">Bio Data</h2>
-              <p className="text-sm text-gray-500">Tell us a bit about yourself</p>
-            </div>
-            
-            <div className="space-y-4">
-              <div className="space-y-2">
-                <Label htmlFor="dateOfBirth" className="text-sm font-medium text-gray-700">
-                  Date of Birth <span className="text-red-500">*</span>
-                </Label>
-                <Input
-                  id="dateOfBirth"
-                  type="date"
-                  value={formData.dateOfBirth}
-                  onChange={(e) => handleChange('dateOfBirth', e.target.value)}
-                  className={`rounded-lg border-gray-300 focus:border-[#667eea] focus:ring-2 focus:ring-[#667eea]/30 focus:ring-offset-0 h-11 ${
-                    errors.dateOfBirth ? 'border-red-300' : ''
-                  }`}
-                />
-                {errors.dateOfBirth && <p className="text-sm text-red-600">{errors.dateOfBirth}</p>}
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="gender" className="text-sm font-medium text-gray-700">
-                  Gender <span className="text-red-500">*</span>
-                </Label>
-                <select
-                  id="gender"
-                  value={formData.gender}
-                  onChange={(e) => handleChange('gender', e.target.value)}
-                  className={`w-full h-11 rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm focus:border-[#667eea] focus:outline-none focus:ring-2 focus:ring-[#667eea]/30 focus:ring-offset-0 transition-all ${
-                    errors.gender ? 'border-red-300' : ''
-                  }`}
-                >
-                  <option value="">Select gender</option>
-                  <option value="male">Male</option>
-                  <option value="female">Female</option>
-                  <option value="other">Other</option>
-                  <option value="prefer-not-to-say">Prefer not to say</option>
-                </select>
-                {errors.gender && <p className="text-sm text-red-600">{errors.gender}</p>}
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="nationality" className="text-sm font-medium text-gray-700">
-                  Nationality <span className="text-red-500">*</span>
-                </Label>
-                <Input
-                  id="nationality"
-                  type="text"
-                  placeholder="Enter your nationality"
-                  value={formData.nationality}
-                  onChange={(e) => handleChange('nationality', e.target.value)}
-                  className={`rounded-lg border-gray-300 focus:border-[#667eea] focus:ring-2 focus:ring-[#667eea]/30 focus:ring-offset-0 h-11 ${
-                    errors.nationality ? 'border-red-300' : ''
-                  }`}
-                />
-                {errors.nationality && <p className="text-sm text-red-600">{errors.nationality}</p>}
-              </div>
-            </div>
-          </div>
-        )}
-
-        {/* Step 5: Education */}
-        {currentStep === 5 && (
           <div className="space-y-5 transition-all duration-300">
             <div className="text-center mb-6">
               <h2 className="text-xl font-semibold text-gray-900 mb-2">Education Details</h2>

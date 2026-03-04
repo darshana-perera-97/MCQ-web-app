@@ -8,7 +8,8 @@ import {
   Menu,
   X,
   Settings,
-  LogOut
+  LogOut,
+  FileText
 } from 'lucide-react';
 import { useState } from 'react';
 import { Button } from '../ui/button';
@@ -28,6 +29,7 @@ export function AdminLayout() {
     { name: 'Dashboard', to: '/admin/dashboard', icon: Home },
     { name: 'User Management', to: '/admin/users', icon: Users },
     { name: 'Question Editor', to: '/admin/questions', icon: BookOpen },
+    { name: 'Materials', to: '/admin/materials', icon: FileText },
     { name: 'Notifications', to: '/admin/notifications', icon: Bell },
     { name: 'Analytics', to: '/admin/analytics', icon: BarChart3 },
     { name: 'Settings', to: '/admin/settings', icon: Settings },

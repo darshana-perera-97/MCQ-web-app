@@ -98,6 +98,11 @@ export const userAPI = {
     method: 'POST',
     body: JSON.stringify({ email }),
   }),
+
+  updateNotificationPreferences: (userId, preferences) => apiRequest(`/users/${userId}/notification-preferences`, {
+    method: 'PUT',
+    body: JSON.stringify(preferences),
+  }),
 };
 
 // MCQ API
@@ -175,6 +180,39 @@ export const mcqAPI = {
     method: 'DELETE',
     adminSecret,
   }),
+
+  uploadCSV: (csvFile, adminSecret) => {
+    const formData = new FormData();
+    formData.append('csv', csvFile);
+
+    const url = `${API_BASE_URL}/mcqs/upload-csv${adminSecret ? `?adminSecret=${encodeURIComponent(adminSecret)}` : ''}`;
+    return fetch(url, {
+      method: 'POST',
+      body: formData,
+      // Don't set Content-Type header - browser will set it automatically with boundary for FormData
+    }).then(async (response) => {
+      // Handle non-JSON responses
+      let data;
+      const contentType = response.headers.get('content-type');
+      if (contentType && contentType.includes('application/json')) {
+        data = await response.json();
+      } else {
+        const text = await response.text();
+        throw new Error(text || 'Failed to upload CSV');
+      }
+
+      if (!response.ok) {
+        throw new Error(data.error || `Failed to upload CSV: ${response.status} ${response.statusText}`);
+      }
+      return data;
+    }).catch((error) => {
+      // Handle network errors
+      if (error instanceof TypeError && error.message === 'Failed to fetch') {
+        throw new Error('Network error: Could not connect to server. Please check if the backend is running.');
+      }
+      throw error;
+    });
+  },
 };
 
 // Essay API
@@ -263,6 +301,74 @@ export const adminAPI = {
 // Analytics API
 export const analyticsAPI = {
   getAnalytics: (adminSecret) => apiRequest('/analytics', {
+    adminSecret,
+  }),
+};
+
+// WhatsApp API
+export const whatsappAPI = {
+  getStatus: (adminSecret) => apiRequest('/whatsapp/status', {
+    adminSecret,
+  }),
+
+  connect: (adminSecret) => apiRequest('/whatsapp/connect', {
+    method: 'POST',
+    adminSecret,
+  }),
+
+  disconnect: (adminSecret) => apiRequest('/whatsapp/disconnect', {
+    method: 'POST',
+    adminSecret,
+  }),
+
+  sendMessage: (phoneNumber, message, adminSecret) => apiRequest('/whatsapp/send', {
+    method: 'POST',
+    body: JSON.stringify({ phoneNumber, message }),
+    adminSecret,
+  }),
+};
+
+// Materials API
+export const materialAPI = {
+  getAll: () => apiRequest('/materials'),
+
+  getById: (materialId) => apiRequest(`/materials/${materialId}`),
+
+  download: async (materialId) => {
+    // First get material info to get filename
+    const material = await apiRequest(`/materials/${materialId}`);
+    const url = `${API_BASE_URL}/materials/${materialId}/download`;
+    const response = await fetch(url);
+    if (!response.ok) {
+      throw new Error('Failed to download material');
+    }
+    const blob = await response.blob();
+    const downloadUrl = window.URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = downloadUrl;
+    a.download = material.fileName || `material-${materialId}.pdf`;
+    document.body.appendChild(a);
+    a.click();
+    window.URL.revokeObjectURL(downloadUrl);
+    document.body.removeChild(a);
+  },
+
+  upload: (formData, adminSecret) => {
+    const url = `${API_BASE_URL}/materials${adminSecret ? `?adminSecret=${encodeURIComponent(adminSecret)}` : ''}`;
+    return fetch(url, {
+      method: 'POST',
+      body: formData,
+    }).then(async (response) => {
+      const data = await response.json();
+      if (!response.ok) {
+        throw new Error(data.error || 'Failed to upload material');
+      }
+      return data;
+    });
+  },
+
+  delete: (materialId, adminSecret) => apiRequest(`/materials/${materialId}`, {
+    method: 'DELETE',
     adminSecret,
   }),
 };

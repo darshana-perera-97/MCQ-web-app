@@ -14,6 +14,7 @@ export function QuizInterface() {
   const [selectedAnswer, setSelectedAnswer] = useState(null);
   const [showResult, setShowResult] = useState(false);
   const [isCorrect, setIsCorrect] = useState(false);
+  const [correctAnswer, setCorrectAnswer] = useState(null);
   const [questionsCompleted, setQuestionsCompleted] = useState(0);
   const [loading, setLoading] = useState(true);
   const [userStats, setUserStats] = useState(null);
@@ -39,15 +40,17 @@ export function QuizInterface() {
   const loadNewQuestion = async () => {
     try {
       setLoading(true);
+      // Load only MCQ questions (not essay questions)
       const question = await mcqAPI.getRandom(user.id);
       if (!question) {
-        // No more questions available
+        // No more MCQ questions available
         navigate('/student/dashboard');
         return;
       }
       setCurrentQuestion(question);
       setSelectedAnswer(null);
       setShowResult(false);
+      setCorrectAnswer(null);
     } catch (error) {
       console.error('Error loading question:', error);
       if (error.message.includes('Daily limit reached')) {
@@ -69,6 +72,7 @@ export function QuizInterface() {
     try {
       const response = await mcqAPI.submitAnswer(user.id, currentQuestion.id, selectedAnswer);
       setIsCorrect(response.correct);
+      setCorrectAnswer(response.correctAnswer);
       setShowResult(true);
       setQuestionsCompleted(prev => prev + 1);
       
@@ -176,9 +180,10 @@ export function QuizInterface() {
         <div className="space-y-4 mb-8">
           {options.map((option, index) => {
             const isSelected = selectedAnswer === option.label;
-            // Note: correctAnswer is not in the response, we'll show based on API response
+            const isCorrectAnswer = showResult && correctAnswer === option.label;
             const showCorrect = showResult && isCorrect && isSelected;
             const showIncorrect = showResult && isSelected && !isCorrect;
+            const showCorrectAnswer = showResult && !isCorrect && isCorrectAnswer;
 
             let borderClass = 'border-gray-200';
             let bgClass = 'bg-white hover:bg-gray-50';
@@ -217,6 +222,25 @@ export function QuizInterface() {
               );
             }
 
+            if (showCorrectAnswer) {
+              borderClass = 'border-green-500';
+              bgClass = 'bg-green-50';
+              iconElement = (
+                <motion.div
+                  initial={{ scale: 0 }}
+                  animate={{ scale: 1 }}
+                  className="ml-auto flex items-center gap-2"
+                >
+                  <span className="px-3 py-1 bg-green-500 text-white text-sm font-medium rounded-lg">
+                    Correct Answer
+                  </span>
+                  <div className="p-2 bg-green-500 rounded-full">
+                    <Check className="w-5 h-5 text-white" />
+                  </div>
+                </motion.div>
+              );
+            }
+
             return (
               <motion.button
                 key={option.label}
@@ -230,12 +254,20 @@ export function QuizInterface() {
                 <div className={`flex-shrink-0 w-12 h-12 rounded-xl flex items-center justify-center font-semibold text-lg ${
                   isSelected && !showResult
                     ? 'bg-white/20 text-white backdrop-blur-sm'
+                    : showCorrectAnswer
+                    ? 'bg-green-500 text-white'
+                    : showIncorrect
+                    ? 'bg-red-500 text-white'
+                    : showCorrect
+                    ? 'bg-green-500 text-white'
                     : 'bg-gray-100 text-gray-700'
                 }`}>
                   {option.label}
                 </div>
                 <div className={`flex-1 font-medium ${
-                  isSelected && !showResult ? 'text-white' : 'text-gray-900'
+                  isSelected && !showResult ? 'text-white' : 
+                  showCorrectAnswer || showCorrect ? 'text-green-900' :
+                  showIncorrect ? 'text-red-900' : 'text-gray-900'
                 }`}>
                   {option.text}
                 </div>
@@ -293,7 +325,7 @@ export function QuizInterface() {
                   }`}>
                     {isCorrect 
                       ? '+10 points added to your score' 
-                      : 'Better luck next time!'
+                      : `The correct answer is ${correctAnswer}. Better luck next time!`
                     }
                   </div>
                 </div>

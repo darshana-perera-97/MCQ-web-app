@@ -33,3 +33,7 @@ build/
 # data
 data
 
+# WhatsApp Web.js auth
+.wwebjs_auth/
+.wwebjs_cache
+

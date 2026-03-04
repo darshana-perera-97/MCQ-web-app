@@ -10,7 +10,8 @@ import {
   approveUser,
   rejectUser,
   verifyOTP,
-  resendOTP
+  resendOTP,
+  updateNotificationPreferences
 } from '../controllers/userController.js';
 import { adminAuth } from '../middleware/adminAuth.js';
 
@@ -22,6 +23,7 @@ router.post('/login', login);
 router.post('/verify-otp', verifyOTP);
 router.post('/resend-otp', resendOTP);
 router.get('/:id/stats', getUserStats);
+router.put('/:id/notification-preferences', updateNotificationPreferences);
 
 // Admin routes
 router.get('/', adminAuth, getAllUsers);

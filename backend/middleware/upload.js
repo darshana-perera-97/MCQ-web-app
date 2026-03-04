@@ -84,3 +84,37 @@ export const uploadCSV = multer({
   fileFilter: csvFileFilter
 });
 
+// PDF file upload storage
+const pdfStorage = multer.diskStorage({
+  destination: (req, file, cb) => {
+    cb(null, path.join(__dirname, '../data/files'));
+  },
+  filename: (req, file, cb) => {
+    // Generate unique filename
+    const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
+    const ext = path.extname(file.originalname);
+    cb(null, `material-${uniqueSuffix}${ext}`);
+  }
+});
+
+// PDF file filter
+const pdfFileFilter = (req, file, cb) => {
+  const allowedTypes = /pdf|application\/pdf/;
+  const extname = allowedTypes.test(path.extname(file.originalname).toLowerCase());
+  const mimetype = allowedTypes.test(file.mimetype);
+
+  if (mimetype || extname || file.originalname.toLowerCase().endsWith('.pdf')) {
+    return cb(null, true);
+  } else {
+    cb(new Error('Only PDF files are allowed'));
+  }
+};
+
+export const uploadPDF = multer({
+  storage: pdfStorage,
+  limits: {
+    fileSize: 50 * 1024 * 1024 // 50MB limit for PDF
+  },
+  fileFilter: pdfFileFilter
+});
+

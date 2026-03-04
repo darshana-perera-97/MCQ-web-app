@@ -6,16 +6,43 @@ import { Input } from '../ui/input';
 import { Label } from '../ui/label';
 import { Textarea } from '../ui/textarea';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '../ui/tabs';
-import { Plus, Trash2, Search, Image as ImageIcon, X, Upload, FileText } from 'lucide-react';
+import { Plus, Trash2, Search, Image as ImageIcon, X, Upload, FileText, Eye, ArrowLeft } from 'lucide-react';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from '../ui/dialog';
 
 export function QuestionEditor() {
   const [questions, setQuestions] = useState([]);
+  const [essays, setEssays] = useState([]);
   const [searchQuery, setSearchQuery] = useState('');
+  const [questionTypeFilter, setQuestionTypeFilter] = useState('all'); // 'all', 'mcq', 'essay'
   const [loading, setLoading] = useState(true);
   const [csvFile, setCsvFile] = useState(null);
   const [csvUploading, setCsvUploading] = useState(false);
   const [csvUploadResult, setCsvUploadResult] = useState(null);
-  
+  const [selectedQuestion, setSelectedQuestion] = useState(null);
+  const [selectedQuestionType, setSelectedQuestionType] = useState(null); // 'mcq' or 'essay'
+
+  // Generate auto ID for MCQ
+  const generateAutoId = () => {
+    const now = new Date();
+    const yymmdd = now.toISOString().slice(2, 10).replace(/-/g, '');
+    const random = Math.floor(Math.random() * 1000).toString().padStart(3, '0');
+    return `MCQ-${yymmdd}-${random}`;
+  };
+
+  // Generate auto ID for Essay
+  const generateEssayAutoId = () => {
+    const now = new Date();
+    const yymmdd = now.toISOString().slice(2, 10).replace(/-/g, '');
+    const random = Math.floor(Math.random() * 1000).toString().padStart(3, '0');
+    return `ESSAY-${yymmdd}-${random}`;
+  };
+
   // MCQ Form State
   const [mcqForm, setMcqForm] = useState({
     id: '',
@@ -41,12 +68,16 @@ export function QuestionEditor() {
 
   useEffect(() => {
     loadQuestions();
+    // Auto-generate IDs when component mounts
+    setMcqForm(prev => ({ ...prev, id: generateAutoId() }));
+    setEssayForm(prev => ({ ...prev, id: generateEssayAutoId() }));
   }, []);
 
   // Reload questions when switching to manage tab
   useEffect(() => {
     if (activeTab === 'manage') {
       loadQuestions();
+      loadEssays();
     }
   }, [activeTab]);
 
@@ -69,12 +100,49 @@ export function QuestionEditor() {
     }
   };
 
+  const loadEssays = async () => {
+    try {
+      const response = await essayAPI.getAll();
+      setEssays(response.essays || []);
+    } catch (err) {
+      console.error('Error loading essays:', err);
+      setEssays([]);
+    }
+  };
+
   const filteredQuestions = questions.filter(
     (q) =>
       q.question?.toLowerCase().includes(searchQuery.toLowerCase()) ||
       q.id?.toLowerCase().includes(searchQuery.toLowerCase()) ||
       (q.category && q.category.toLowerCase().includes(searchQuery.toLowerCase()))
   );
+
+  const filteredEssays = essays.filter(
+    (e) =>
+      e.question?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      e.id?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      (e.category && e.category.toLowerCase().includes(searchQuery.toLowerCase()))
+  );
+
+  // Get combined filtered results based on question type filter
+  const getDisplayItems = () => {
+    if (questionTypeFilter === 'mcq') {
+      return { items: filteredQuestions, type: 'mcq' };
+    } else if (questionTypeFilter === 'essay') {
+      return { items: filteredEssays, type: 'essay' };
+    } else {
+      // Combine both types
+      return { 
+        items: [
+          ...filteredQuestions.map(q => ({ ...q, _type: 'mcq' })),
+          ...filteredEssays.map(e => ({ ...e, _type: 'essay' }))
+        ], 
+        type: 'all' 
+      };
+    }
+  };
+
+  const displayItems = getDisplayItems();
 
   const handleImageChange = (e) => {
     const file = e.target.files[0];
@@ -120,22 +188,7 @@ export function QuestionEditor() {
       setCsvUploadResult(null);
       
       const adminSecret = getAdminSecret();
-      const formData = new FormData();
-      formData.append('csv', csvFile);
-
-      const baseUrl = process.env.REACT_APP_API_URL || 'http://localhost:3940/api';
-      const url = `${baseUrl}/mcqs/upload-csv?adminSecret=${encodeURIComponent(adminSecret)}`;
-      
-      const response = await fetch(url, {
-        method: 'POST',
-        body: formData,
-      });
-
-      const data = await response.json();
-
-      if (!response.ok) {
-        throw new Error(data.error || 'Failed to upload CSV');
-      }
+      const data = await mcqAPI.uploadCSV(csvFile, adminSecret);
 
       setCsvUploadResult({
         success: true,
@@ -152,6 +205,7 @@ export function QuestionEditor() {
       const fileInput = document.getElementById('csv-upload');
       if (fileInput) fileInput.value = '';
     } catch (error) {
+      console.error('CSV upload error:', error);
       setCsvUploadResult({
         success: false,
         message: error.message || 'Failed to upload CSV'
@@ -162,15 +216,17 @@ export function QuestionEditor() {
   };
 
   const handleAddMCQ = async () => {
-    if (!mcqForm.id || !mcqForm.questionText || !mcqForm.optionA) {
+    if (!mcqForm.questionText || !mcqForm.optionA) {
       window.alert('Please fill in all required fields');
       return;
     }
 
     try {
       const adminSecret = getAdminSecret();
+      // Auto-generate ID if not set
+      const questionId = mcqForm.id || generateAutoId();
       const newMCQ = {
-        id: mcqForm.id,
+        id: questionId,
         question: mcqForm.questionText,
         optionA: mcqForm.optionA,
         optionB: mcqForm.optionB,
@@ -183,9 +239,9 @@ export function QuestionEditor() {
       await mcqAPI.create(newMCQ, adminSecret, mcqImage);
       await loadQuestions();
       
-      // Reset form
+      // Reset form with new auto-generated ID
       setMcqForm({
-        id: '',
+        id: generateAutoId(),
         questionText: '',
         optionA: '',
         optionB: '',
@@ -201,13 +257,32 @@ export function QuestionEditor() {
     }
   };
 
-  const handleDeleteQuestion = async (id) => {
+  const handleViewQuestion = (item, type) => {
+    setSelectedQuestion(item);
+    setSelectedQuestionType(type);
+  };
+
+  const handleCloseQuestionView = () => {
+    setSelectedQuestion(null);
+    setSelectedQuestionType(null);
+  };
+
+  const handleDeleteQuestion = async (id, type = 'mcq') => {
     if (!window.confirm('Are you sure you want to delete this question?')) return;
     
     try {
       const adminSecret = getAdminSecret();
-      await mcqAPI.delete(id, adminSecret);
-      await loadQuestions();
+      if (type === 'essay') {
+        await essayAPI.delete(id, adminSecret);
+        await loadEssays();
+      } else {
+        await mcqAPI.delete(id, adminSecret);
+        await loadQuestions();
+      }
+      // Close view if the deleted question was being viewed
+      if (selectedQuestion && selectedQuestion.id === id) {
+        handleCloseQuestionView();
+      }
     } catch (err) {
       alert(err.message || 'Failed to delete question');
     }
@@ -274,14 +349,15 @@ export function QuestionEditor() {
                 <div className="space-y-5">
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
                     <div className="space-y-2">
-                      <Label htmlFor="mcq-id">Question ID *</Label>
+                      <Label htmlFor="mcq-id">Question ID (Auto-generated)</Label>
                       <Input
                         id="mcq-id"
-                        placeholder="e.g., MCQ-011"
+                        placeholder="Auto-generated"
                         value={mcqForm.id}
-                        onChange={(e) => setMcqForm({ ...mcqForm, id: e.target.value })}
-                        className="rounded-xl border-gray-200"
+                        readOnly
+                        className="rounded-xl border-gray-200 bg-gray-50 cursor-not-allowed"
                       />
+                      <p className="text-xs text-gray-500">ID is automatically generated</p>
                     </div>
                     <div className="space-y-2">
                       <Label htmlFor="mcq-category">Category (Optional)</Label>
@@ -552,14 +628,15 @@ export function QuestionEditor() {
                 <div className="space-y-5">
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
                     <div className="space-y-2">
-                      <Label htmlFor="essay-id">Question ID *</Label>
+                      <Label htmlFor="essay-id">Question ID (Auto-generated)</Label>
                       <Input
                         id="essay-id"
-                        placeholder="e.g., ESSAY-001"
+                        placeholder="Auto-generated"
                         value={essayForm.id}
-                        onChange={(e) => setEssayForm({ ...essayForm, id: e.target.value })}
-                        className="rounded-xl border-gray-200"
+                        readOnly
+                        className="rounded-xl border-gray-200 bg-gray-50 cursor-not-allowed"
                       />
+                      <p className="text-xs text-gray-500">ID is automatically generated</p>
                     </div>
                     <div className="space-y-2">
                       <Label htmlFor="essay-category">Category (Optional)</Label>
@@ -586,18 +663,25 @@ export function QuestionEditor() {
 
                   <Button
                     onClick={async () => {
-                      if (!essayForm.id || !essayForm.question) {
-                        alert('Please fill in all required fields');
+                      if (!essayForm.question) {
+                        alert('Please fill in the question field');
                         return;
                       }
                       try {
                         const adminSecret = getAdminSecret();
+                        // Auto-generate ID if not set
+                        const questionId = essayForm.id || generateEssayAutoId();
                         await essayAPI.create({
-                          id: essayForm.id,
+                          id: questionId,
                           question: essayForm.question,
                           category: essayForm.category || null,
                         }, adminSecret);
-                        setEssayForm({ id: '', question: '', category: '' });
+                        // Reset form with new auto-generated ID
+                        setEssayForm({ 
+                          id: generateEssayAutoId(), 
+                          question: '', 
+                          category: '' 
+                        });
                         alert('Essay question created successfully');
                       } catch (err) {
                         alert(err.message || 'Failed to create essay question');
@@ -621,16 +705,27 @@ export function QuestionEditor() {
             <h3 className="text-2xl font-bold text-gray-900 mb-4">Manage Questions</h3>
             <p className="text-sm text-gray-600 mb-4">Search, view, and delete existing questions</p>
             
-            {/* Search */}
-            <div className="relative">
-              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
-              <Input
-                type="text"
-                placeholder="Search questions by ID, text, or category..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className="pl-10 h-12 rounded-xl border-gray-200"
-              />
+            {/* Search and Filter */}
+            <div className="flex flex-col sm:flex-row gap-4">
+              <div className="relative flex-1">
+                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
+                <Input
+                  type="text"
+                  placeholder="Search questions by ID, text, or category..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="pl-10 h-12 rounded-xl border-gray-200"
+                />
+              </div>
+              <select
+                value={questionTypeFilter}
+                onChange={(e) => setQuestionTypeFilter(e.target.value)}
+                className="px-4 py-3 h-12 rounded-xl border border-gray-300 focus:border-[#667eea] focus:ring-2 focus:ring-[#667eea]/30 focus:outline-none bg-white"
+              >
+                <option value="all">All Questions</option>
+                <option value="mcq">MCQ Questions</option>
+                <option value="essay">Essay Questions</option>
+              </select>
             </div>
           </div>
 
@@ -639,7 +734,7 @@ export function QuestionEditor() {
               <div className="inline-block w-8 h-8 border-4 border-[#667eea] border-t-transparent rounded-full animate-spin mb-4"></div>
               <div className="text-xl text-gray-600">Loading questions...</div>
             </div>
-          ) : questions.length === 0 ? (
+          ) : displayItems.items.length === 0 && questions.length === 0 && essays.length === 0 ? (
             <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-12 text-center">
               <div className="inline-flex items-center justify-center w-16 h-16 bg-gray-100 rounded-full mb-4">
                 <Search className="w-8 h-8 text-gray-400" />
@@ -651,94 +746,279 @@ export function QuestionEditor() {
             /* Questions List */
             <div className="bg-white rounded-2xl shadow-sm border border-gray-200 overflow-hidden">
               <div className="divide-y divide-gray-100">
-                {filteredQuestions.length === 0 ? (
+                {displayItems.items.length === 0 ? (
                   <div className="p-6 text-center">
                     <p className="text-gray-500 mb-2">No questions match your search</p>
-                    <p className="text-sm text-gray-400">Try a different search term</p>
+                    <p className="text-sm text-gray-400">Try a different search term or filter</p>
                   </div>
                 ) : (
-                  filteredQuestions.map((question) => (
-                <div key={question.id} className="p-6 hover:bg-gray-50 transition-colors">
-                  <div className="flex items-start justify-between gap-4">
-                    <div className="flex-1">
-                      <div className="flex items-center gap-3 mb-3">
-                        <div className="inline-flex items-center px-3 py-1 rounded-lg bg-gradient-to-r from-[#667eea]/20 to-[#764ba2]/20">
-                          <span className="text-sm font-semibold bg-gradient-to-r from-[#667eea] to-[#764ba2] bg-clip-text text-transparent">
-                            {question.id}
-                          </span>
-                        </div>
-                        {question.category && (
-                          <div className="inline-flex items-center px-3 py-1 rounded-lg bg-gray-100">
-                            <span className="text-sm font-medium text-gray-600">
-                              {question.category}
-                            </span>
-                          </div>
-                        )}
-                      </div>
-                      <p className="text-gray-900 font-medium mb-3">{question.question}</p>
-                      {question.image && (
-                        <div className="mb-3 rounded-lg overflow-hidden border border-gray-200 max-w-md">
-                          <img
-                            src={`${BACKEND_URL}${question.image}`}
-                            alt="Question"
-                            className="w-full h-auto max-h-48 object-contain bg-gray-50"
-                            onError={(e) => {
-                              e.target.style.display = 'none';
-                            }}
-                          />
-                        </div>
-                      )}
-                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                        {[
-                          { label: 'A', text: question.optionA },
-                          { label: 'B', text: question.optionB },
-                          { label: 'C', text: question.optionC },
-                          { label: 'D', text: question.optionD },
-                        ].map((option) => (
-                          <div
-                            key={option.label}
-                            className={`flex items-center gap-2 p-2 rounded-lg ${
-                              option.label === question.answer
-                                ? 'bg-green-50 border border-green-200'
-                                : 'bg-gray-50'
-                            }`}
-                          >
-                            <div className={`flex-shrink-0 w-6 h-6 rounded-md flex items-center justify-center text-sm font-semibold ${
-                              option.label === question.answer
-                                ? 'bg-green-500 text-white'
-                                : 'bg-gray-200 text-gray-600'
-                            }`}>
-                              {option.label}
+                  displayItems.items.map((item) => {
+                    const isEssay = item._type === 'essay' || displayItems.type === 'essay';
+                    
+                    return (
+                      <div key={item.id} className="p-6 hover:bg-gray-50 transition-colors">
+                        <div className="flex items-start justify-between gap-4">
+                          <div className="flex-1">
+                            <div className="flex items-center gap-3 mb-3">
+                              <button
+                                onClick={() => handleViewQuestion(item, isEssay ? 'essay' : 'mcq')}
+                                className={`inline-flex items-center px-3 py-1 rounded-lg cursor-pointer hover:opacity-80 transition-opacity ${
+                                  isEssay 
+                                    ? 'bg-gradient-to-r from-[#fa709a]/20 to-[#fee140]/20 hover:from-[#fa709a]/30 hover:to-[#fee140]/30'
+                                    : 'bg-gradient-to-r from-[#667eea]/20 to-[#764ba2]/20 hover:from-[#667eea]/30 hover:to-[#764ba2]/30'
+                                }`}
+                              >
+                                <Eye className="w-3 h-3 mr-1.5" />
+                                <span className={`text-sm font-semibold ${
+                                  isEssay
+                                    ? 'bg-gradient-to-r from-[#fa709a] to-[#fee140] bg-clip-text text-transparent'
+                                    : 'bg-gradient-to-r from-[#667eea] to-[#764ba2] bg-clip-text text-transparent'
+                                }`}>
+                                  {item.id}
+                                </span>
+                              </button>
+                              {item.category && (
+                                <div className="inline-flex items-center px-3 py-1 rounded-lg bg-gray-100">
+                                  <span className="text-sm font-medium text-gray-600">
+                                    {item.category}
+                                  </span>
+                                </div>
+                              )}
+                              {isEssay && (
+                                <div className="inline-flex items-center px-3 py-1 rounded-lg bg-gradient-to-r from-[#fa709a]/10 to-[#fee140]/10">
+                                  <span className="text-sm font-medium text-[#fa709a]">
+                                    Essay Type
+                                  </span>
+                                </div>
+                              )}
                             </div>
-                            <span className="text-sm text-gray-700">{option.text}</span>
+                            <p className="text-gray-900 font-medium mb-3">{item.question}</p>
+                            
+                            {!isEssay && (
+                              <>
+                                {item.image && (
+                                  <div className="mb-3 rounded-lg overflow-hidden border border-gray-200 max-w-md">
+                                    <img
+                                      src={`${BACKEND_URL}${item.image}`}
+                                      alt="Question"
+                                      className="w-full h-auto max-h-48 object-contain bg-gray-50"
+                                      onError={(e) => {
+                                        e.target.style.display = 'none';
+                                      }}
+                                    />
+                                  </div>
+                                )}
+                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                                  {[
+                                    { label: 'A', text: item.optionA },
+                                    { label: 'B', text: item.optionB },
+                                    { label: 'C', text: item.optionC },
+                                    { label: 'D', text: item.optionD },
+                                  ].map((option) => (
+                                    <div
+                                      key={option.label}
+                                      className={`flex items-center gap-2 p-2 rounded-lg ${
+                                        option.label === item.answer
+                                          ? 'bg-green-50 border border-green-200'
+                                          : 'bg-gray-50'
+                                      }`}
+                                    >
+                                      <div className={`flex-shrink-0 w-6 h-6 rounded-md flex items-center justify-center text-sm font-semibold ${
+                                        option.label === item.answer
+                                          ? 'bg-green-500 text-white'
+                                          : 'bg-gray-200 text-gray-600'
+                                      }`}>
+                                        {option.label}
+                                      </div>
+                                      <span className="text-sm text-gray-700">{option.text}</span>
+                                    </div>
+                                  ))}
+                                </div>
+                              </>
+                            )}
+                            
+                            {isEssay && item.answer && (
+                              <div className="mt-3 p-4 bg-green-50 rounded-lg border border-green-200">
+                                <div className="text-sm font-semibold text-green-700 mb-2">Sample Answer:</div>
+                                <p className="text-sm text-green-900 whitespace-pre-wrap">{item.answer}</p>
+                              </div>
+                            )}
                           </div>
-                        ))}
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => handleDeleteQuestion(item.id, isEssay ? 'essay' : 'mcq')}
+                            className="rounded-lg hover:bg-red-50 hover:text-red-600 flex-shrink-0"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </Button>
+                        </div>
                       </div>
-                    </div>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => handleDeleteQuestion(question.id)}
-                      className="rounded-lg hover:bg-red-50 hover:text-red-600 flex-shrink-0"
-                    >
-                      <Trash2 className="w-4 h-4" />
-                    </Button>
-                  </div>
-                </div>
-                  ))
+                    );
+                  })
                 )}
               </div>
             </div>
           )}
           
           {/* Questions Count */}
-          {!loading && questions.length > 0 && (
+          {!loading && (questions.length > 0 || essays.length > 0) && (
             <div className="text-center text-sm text-gray-500">
-              Showing {filteredQuestions.length} of {questions.length} question{questions.length !== 1 ? 's' : ''}
+              Showing {displayItems.items.length} of {questions.length + essays.length} question{(questions.length + essays.length) !== 1 ? 's' : ''}
+              {questionTypeFilter === 'all' && (
+                <span className="ml-2">
+                  ({questions.length} MCQ{questions.length !== 1 ? 's' : ''}, {essays.length} Essay{essays.length !== 1 ? 's' : ''})
+                </span>
+              )}
             </div>
           )}
         </TabsContent>
       </Tabs>
+
+      {/* Question Detail Modal */}
+      {selectedQuestion && (
+        <Dialog open={!!selectedQuestion} onOpenChange={handleCloseQuestionView}>
+          <DialogContent className="sm:max-w-4xl max-h-[90vh] overflow-y-auto bg-white">
+            <DialogHeader>
+              <div className="flex items-center gap-3 mb-2">
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  onClick={handleCloseQuestionView}
+                  className="rounded-lg"
+                >
+                  <ArrowLeft className="w-5 h-5" />
+                </Button>
+                <DialogTitle className="text-2xl font-semibold text-gray-900">
+                  Question Details - {selectedQuestion.id}
+                </DialogTitle>
+              </div>
+              <DialogDescription className="text-gray-600">
+                {selectedQuestionType === 'essay' ? 'Essay Type Question' : 'MCQ Question'}
+              </DialogDescription>
+            </DialogHeader>
+
+            <div className="mt-6 space-y-6">
+              {/* Question Info */}
+              <div className="flex items-center gap-4 flex-wrap">
+                <div className={`inline-flex items-center gap-2 px-4 py-2 rounded-xl ${
+                  selectedQuestionType === 'essay'
+                    ? 'bg-gradient-to-r from-[#fa709a]/10 to-[#fee140]/10'
+                    : 'bg-gradient-to-r from-[#667eea]/10 to-[#764ba2]/10'
+                }`}>
+                  <span className={`text-sm font-medium ${
+                    selectedQuestionType === 'essay'
+                      ? 'text-[#fa709a]'
+                      : 'text-[#667eea]'
+                  }`}>
+                    {selectedQuestion.id}
+                  </span>
+                </div>
+                {selectedQuestion.category && (
+                  <div className="inline-flex items-center gap-2 px-4 py-2 bg-gray-100 rounded-xl">
+                    <span className="text-sm font-medium text-gray-700">{selectedQuestion.category}</span>
+                  </div>
+                )}
+                {selectedQuestionType === 'essay' && (
+                  <div className="inline-flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-[#fa709a]/10 to-[#fee140]/10 rounded-xl">
+                    <span className="text-sm font-medium text-[#fa709a]">Essay Type</span>
+                  </div>
+                )}
+              </div>
+
+              {/* Question Content */}
+              <div className="bg-gray-50 rounded-2xl p-6 border border-gray-200">
+                <h3 className="text-sm font-semibold text-gray-700 mb-3 uppercase tracking-wide">Question</h3>
+                <p className="text-base text-gray-900 leading-relaxed whitespace-pre-wrap">
+                  {selectedQuestion.question}
+                </p>
+              </div>
+
+              {/* MCQ Options */}
+              {selectedQuestionType === 'mcq' && (
+                <>
+                  {selectedQuestion.image && (
+                    <div className="rounded-xl overflow-hidden border border-gray-200">
+                      <img
+                        src={`${BACKEND_URL}${selectedQuestion.image}`}
+                        alt="Question"
+                        className="w-full h-auto max-h-96 object-contain bg-gray-50"
+                        onError={(e) => {
+                          e.target.style.display = 'none';
+                        }}
+                      />
+                    </div>
+                  )}
+                  <div className="space-y-3">
+                    <h3 className="text-sm font-semibold text-gray-700 mb-3 uppercase tracking-wide">Options</h3>
+                    {[
+                      { label: 'A', text: selectedQuestion.optionA },
+                      { label: 'B', text: selectedQuestion.optionB },
+                      { label: 'C', text: selectedQuestion.optionC },
+                      { label: 'D', text: selectedQuestion.optionD },
+                    ].map((option) => (
+                      <div
+                        key={option.label}
+                        className={`p-4 rounded-xl border-2 ${
+                          option.label === selectedQuestion.answer
+                            ? 'bg-green-50 border-green-300'
+                            : 'bg-white border-gray-200'
+                        }`}
+                      >
+                        <div className="flex items-center gap-3">
+                          <div className={`flex-shrink-0 w-10 h-10 rounded-lg flex items-center justify-center text-lg font-semibold ${
+                            option.label === selectedQuestion.answer
+                              ? 'bg-green-500 text-white'
+                              : 'bg-gray-200 text-gray-600'
+                          }`}>
+                            {option.label}
+                          </div>
+                          <span className="text-base text-gray-900">{option.text}</span>
+                          {option.label === selectedQuestion.answer && (
+                            <span className="ml-auto px-3 py-1 bg-green-500 text-white text-sm font-medium rounded-lg">
+                              Correct Answer
+                            </span>
+                          )}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </>
+              )}
+
+              {/* Essay Answer */}
+              {selectedQuestionType === 'essay' && selectedQuestion.answer && (
+                <div className="bg-green-50 rounded-2xl p-6 border border-green-200">
+                  <h3 className="text-sm font-semibold text-green-700 mb-3 uppercase tracking-wide">Sample Answer</h3>
+                  <p className="text-base text-green-900 leading-relaxed whitespace-pre-wrap">
+                    {selectedQuestion.answer}
+                  </p>
+                </div>
+              )}
+
+              {/* Actions */}
+              <div className="flex gap-3 pt-4 border-t border-gray-200">
+                <Button
+                  onClick={handleCloseQuestionView}
+                  variant="outline"
+                  className="flex-1 rounded-xl h-12"
+                >
+                  <ArrowLeft className="w-4 h-4 mr-2" />
+                  Back to List
+                </Button>
+                <Button
+                  onClick={() => handleDeleteQuestion(selectedQuestion.id, selectedQuestionType)}
+                  variant="outline"
+                  className="rounded-xl h-12 hover:bg-red-50 hover:text-red-600 hover:border-red-300"
+                >
+                  <Trash2 className="w-4 h-4 mr-2" />
+                  Delete
+                </Button>
+              </div>
+            </div>
+          </DialogContent>
+        </Dialog>
+      )}
     </div>
   );
 }

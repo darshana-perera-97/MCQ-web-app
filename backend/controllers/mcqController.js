@@ -153,7 +153,7 @@ export const getMcqById = async (req, res) => {
 
 export const createMcq = async (req, res) => {
   try {
-    const { question, optionA, optionB, optionC, optionD, answer, category } = req.body;
+    const { id, question, optionA, optionB, optionC, optionD, answer, category } = req.body;
 
     if (!question || !optionA || !optionB || !optionC || !optionD || !answer) {
       return res.status(400).json({ error: 'All fields are required' });
@@ -163,11 +163,14 @@ export const createMcq = async (req, res) => {
       return res.status(400).json({ error: 'Answer must be A, B, C, or D' });
     }
 
-    // Generate unique ID (using yymmdd format or UUID)
-    const now = new Date();
-    const yymmdd = now.toISOString().slice(2, 10).replace(/-/g, '');
-    const random = Math.floor(Math.random() * 1000).toString().padStart(3, '0');
-    const id = `MCQ-${yymmdd}-${random}`;
+    // Use provided ID or generate unique ID (using yymmdd format)
+    let questionId = id;
+    if (!questionId) {
+      const now = new Date();
+      const yymmdd = now.toISOString().slice(2, 10).replace(/-/g, '');
+      const random = Math.floor(Math.random() * 1000).toString().padStart(3, '0');
+      questionId = `MCQ-${yymmdd}-${random}`;
+    }
 
     // Handle image upload if present
     let imagePath = null;
@@ -176,7 +179,7 @@ export const createMcq = async (req, res) => {
     }
 
     const newMcq = {
-      id,
+      id: questionId,
       question,
       optionA,
       optionB,

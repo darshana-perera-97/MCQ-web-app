@@ -15,7 +15,7 @@ export const getSettings = async (req, res) => {
 
 export const updateSettings = async (req, res) => {
   try {
-    const { globalDailyLimit, smtp } = req.body;
+    const { globalDailyLimit, smtp, notifications } = req.body;
     const settings = await settingsModel.read();
 
     if (globalDailyLimit !== undefined) {
@@ -33,8 +33,16 @@ export const updateSettings = async (req, res) => {
         user: smtp.user || settings.smtp?.user || '',
         password: smtp.password || settings.smtp?.password || '',
       };
-      await settingsModel.write(settings);
     }
+
+    if (notifications !== undefined) {
+      settings.notifications = {
+        emailEnabled: notifications.emailEnabled !== undefined ? notifications.emailEnabled : (settings.notifications?.emailEnabled !== false),
+        whatsappEnabled: notifications.whatsappEnabled !== undefined ? notifications.whatsappEnabled : (settings.notifications?.whatsappEnabled !== false),
+      };
+    }
+
+    await settingsModel.write(settings);
 
     const updatedSettings = await settingsModel.read();
     res.json({

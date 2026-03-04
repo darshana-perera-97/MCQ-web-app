@@ -205,6 +205,38 @@ export const getUserById = async (req, res) => {
   }
 };
 
+export const updateNotificationPreferences = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { emailNotifications, whatsappNotifications } = req.body;
+
+    const user = await userModel.findById(id);
+    if (!user) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+
+    // Update notification preferences
+    const updates = {};
+    if (emailNotifications !== undefined) {
+      updates.emailNotifications = emailNotifications;
+    }
+    if (whatsappNotifications !== undefined) {
+      updates.whatsappNotifications = whatsappNotifications;
+    }
+
+    await userModel.update(id, updates);
+    const updatedUser = await userModel.findById(id);
+
+    res.json({
+      message: 'Notification preferences updated successfully',
+      user: updatedUser
+    });
+  } catch (error) {
+    console.error('Update notification preferences error:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+};
+
 export const updateUser = async (req, res) => {
   try {
     const { id } = req.params;

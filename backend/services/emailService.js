@@ -241,3 +241,78 @@ export async function testSMTPConnection() {
   }
 }
 
+/**
+ * Email template for notifications
+ */
+function getNotificationEmailTemplate(title, message, imageUrl = null) {
+  return `
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>${title}</title>
+</head>
+<body style="margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; background-color: #f3f4f6;">
+  <table role="presentation" style="width: 100%; border-collapse: collapse; background-color: #f3f4f6; padding: 20px;">
+    <tr>
+      <td align="center" style="padding: 20px 0;">
+        <table role="presentation" style="max-width: 600px; width: 100%; background-color: #ffffff; border-radius: 16px; box-shadow: 0 4px 24px rgba(0, 0, 0, 0.06); border: 1px solid #e5e7eb; overflow: hidden;">
+          <!-- Header -->
+          <tr>
+            <td style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); padding: 40px 30px; text-align: center;">
+              <h1 style="color: #ffffff; font-size: 28px; font-weight: 600; margin: 0; line-height: 1.2;">${title}</h1>
+            </td>
+          </tr>
+          
+          <!-- Content -->
+          <tr>
+            <td style="padding: 40px 30px;">
+              ${imageUrl ? `<img src="${imageUrl}" alt="Notification Image" style="max-width: 100%; height: auto; border-radius: 8px; margin-bottom: 20px;" />` : ''}
+              <div style="color: #374151; font-size: 16px; line-height: 1.6; white-space: pre-wrap;">${message}</div>
+            </td>
+          </tr>
+          
+          <!-- Footer -->
+          <tr>
+            <td style="background-color: #f9fafb; padding: 30px; text-align: center; border-top: 1px solid #e5e7eb;">
+              <p style="color: #6b7280; font-size: 12px; line-height: 1.6; margin: 0;">
+                This is an automated notification from Learning Management System.<br>
+                © ${new Date().getFullYear()} Learning Management System. All rights reserved.
+              </p>
+            </td>
+          </tr>
+        </table>
+      </td>
+    </tr>
+  </table>
+</body>
+</html>
+  `;
+}
+
+/**
+ * Send notification email to a user
+ */
+export async function sendNotificationEmail(email, name, title, message, imageUrl = null) {
+  try {
+    const transporter = await getTransporter();
+    const settings = await settingsModel.read();
+    const smtp = settings.smtp || {};
+
+    const mailOptions = {
+      from: `"Learning Management System" <${smtp.user}>`,
+      to: email,
+      subject: title,
+      html: getNotificationEmailTemplate(title, message, imageUrl),
+    };
+
+    const info = await transporter.sendMail(mailOptions);
+    console.log(`Notification email sent to ${email}:`, info.messageId);
+    return { success: true, messageId: info.messageId };
+  } catch (error) {
+    console.error(`Error sending notification email to ${email}:`, error);
+    throw error;
+  }
+}
+

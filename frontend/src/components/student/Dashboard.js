@@ -2,9 +2,11 @@ import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ProgressRing } from '../common/ProgressRing';
 import { useAuth } from '../../context/AuthContext';
-import { userAPI, mcqAPI } from '../../services/api';
+import { userAPI, mcqAPI, essayAPI } from '../../services/api';
 import { Button } from '../ui/button';
-import { BookOpen, TrendingUp, Award, LogOut } from 'lucide-react';
+import { BookOpen, TrendingUp, Award, LogOut, FileText, Bell, PenTool } from 'lucide-react';
+import { MaterialsModal } from './MaterialsModal';
+import { EssaysModal } from './EssaysModal';
 
 export function Dashboard() {
   const navigate = useNavigate();
@@ -17,6 +19,11 @@ export function Dashboard() {
   const [userStats, setUserStats] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [materialsModalOpen, setMaterialsModalOpen] = useState(false);
+  const [essaysModalOpen, setEssaysModalOpen] = useState(false);
+  const [essays, setEssays] = useState([]);
+  const [notificationsEnabled, setNotificationsEnabled] = useState(true);
+  const [savingPreferences, setSavingPreferences] = useState(false);
 
   useEffect(() => {
     if (!user) {
@@ -24,7 +31,48 @@ export function Dashboard() {
       return;
     }
     loadUserStats();
+    loadNotificationPreferences();
+    loadEssays();
   }, [user, navigate]);
+
+  const loadEssays = async () => {
+    try {
+      const response = await essayAPI.getAll();
+      setEssays(response.essays || []);
+    } catch (err) {
+      console.error('Error loading essays:', err);
+    }
+  };
+
+  const loadNotificationPreferences = () => {
+    if (user) {
+      // Notifications are enabled if both email and WhatsApp are enabled (default to true)
+      const emailEnabled = user.emailNotifications !== false;
+      const whatsappEnabled = user.whatsappNotifications !== false;
+      setNotificationsEnabled(emailEnabled && whatsappEnabled);
+    }
+  };
+
+  const handleNotificationToggle = async (enabled) => {
+    if (!user) return;
+
+    const oldValue = notificationsEnabled;
+    setNotificationsEnabled(enabled);
+
+    try {
+      setSavingPreferences(true);
+      await userAPI.updateNotificationPreferences(user.id, {
+        emailNotifications: enabled,
+        whatsappNotifications: enabled,
+      });
+    } catch (err) {
+      console.error('Error updating notification preferences:', err);
+      // Revert on error
+      setNotificationsEnabled(oldValue);
+    } finally {
+      setSavingPreferences(false);
+    }
+  };
 
   const loadUserStats = async () => {
     try {
@@ -103,7 +151,7 @@ export function Dashboard() {
             </div>
           </div>
 
-          {/* Start Quiz Card */}
+          {/* Start Quiz Card - MCQs Only */}
           <div className="bg-gradient-to-br from-[#667eea] to-[#764ba2] rounded-2xl shadow-[0_4px_24px_rgba(102,126,234,0.2)] p-8 text-white">
             <div className="flex flex-col h-full">
               <div className="flex items-center gap-3 mb-4">
@@ -114,7 +162,7 @@ export function Dashboard() {
               </div>
               <p className="text-white/90 mb-6 flex-1">
                 {canTakeQuiz 
-                  ? 'Begin your next challenge and boost your knowledge!'
+                  ? 'Practice MCQ questions and test your knowledge!'
                   : remainingToday === 0
                     ? "You've reached your daily limit. Come back tomorrow!"
                     : "You've completed all available questions!"
@@ -125,7 +173,53 @@ export function Dashboard() {
                 disabled={!canTakeQuiz}
                 className="w-full bg-white text-[#667eea] hover:bg-white/90 rounded-xl h-12 font-medium disabled:opacity-50 disabled:cursor-not-allowed"
               >
-                {canTakeQuiz ? 'Start Now' : 'Completed'}
+                {canTakeQuiz ? 'Start MCQ Quiz' : 'Completed'}
+              </Button>
+            </div>
+          </div>
+
+          {/* Materials Card */}
+          <div className="bg-gradient-to-br from-[#f093fb] to-[#f5576c] rounded-2xl shadow-[0_4px_24px_rgba(245,87,108,0.2)] p-8 text-white">
+            <div className="flex flex-col h-full">
+              <div className="flex items-center gap-3 mb-4">
+                <div className="p-3 bg-white/20 rounded-xl backdrop-blur-sm">
+                  <FileText className="w-6 h-6" />
+                </div>
+                <h3 className="text-lg font-medium">Study Materials</h3>
+              </div>
+              <p className="text-white/90 mb-6 flex-1">
+                Access PDFs, notes, and study resources uploaded by your instructors.
+              </p>
+              <Button 
+                onClick={() => setMaterialsModalOpen(true)}
+                className="w-full bg-white text-[#f5576c] hover:bg-white/90 rounded-xl h-12 font-medium"
+              >
+                View Materials
+              </Button>
+            </div>
+          </div>
+
+          {/* Essay Questions Card */}
+          <div className="bg-gradient-to-br from-[#fa709a] to-[#fee140] rounded-2xl shadow-[0_4px_24px_rgba(250,112,154,0.2)] p-8 text-white">
+            <div className="flex flex-col h-full">
+              <div className="flex items-center gap-3 mb-4">
+                <div className="p-3 bg-white/20 rounded-xl backdrop-blur-sm">
+                  <PenTool className="w-6 h-6" />
+                </div>
+                <h3 className="text-lg font-medium">Essay Questions</h3>
+              </div>
+              <p className="text-white/90 mb-6 flex-1">
+                Practice essay type questions and improve your writing skills.
+              </p>
+              <div className="mb-4">
+                <div className="text-sm text-white/80 mb-1">Available Questions</div>
+                <div className="text-2xl font-semibold">{essays.length}</div>
+              </div>
+              <Button 
+                onClick={() => setEssaysModalOpen(true)}
+                className="w-full bg-white text-[#fa709a] hover:bg-white/90 rounded-xl h-12 font-medium"
+              >
+                View Essays
               </Button>
             </div>
           </div>
@@ -169,6 +263,46 @@ export function Dashboard() {
           </div>
         </div>
 
+        {/* Full Width Bar */}
+        <div className="mt-8 w-full bg-gradient-to-r from-[#667eea] to-[#764ba2] rounded-2xl shadow-[0_4px_24px_rgba(102,126,234,0.2)] p-6 text-white">
+          <div className="flex items-center justify-between">
+            <div>
+              <h3 className="text-xl font-semibold mb-1">Keep Learning!</h3>
+              <p className="text-white/90">Continue practicing to improve your score and knowledge</p>
+            </div>
+            <Button 
+              onClick={() => navigate('/quiz')}
+              disabled={!canTakeQuiz}
+              className="bg-white text-[#667eea] hover:bg-white/90 rounded-xl h-12 px-6 font-medium disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              {canTakeQuiz ? 'Start Quiz Now' : 'Completed'}
+            </Button>
+          </div>
+        </div>
+
+        {/* Notification Preferences */}
+        <div className="mt-8 bg-white rounded-2xl shadow-sm border border-gray-200 p-6">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <Bell className="w-5 h-5 text-[#667eea]" />
+              <div>
+                <h3 className="text-lg font-semibold text-gray-900">Notifications</h3>
+                <p className="text-sm text-gray-600">Receive notifications via email and WhatsApp</p>
+              </div>
+            </div>
+            <label className="relative inline-flex items-center cursor-pointer">
+              <input
+                type="checkbox"
+                checked={notificationsEnabled}
+                onChange={(e) => handleNotificationToggle(e.target.checked)}
+                disabled={savingPreferences}
+                className="sr-only peer"
+              />
+              <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-[#667eea]/20 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-gradient-to-r peer-checked:from-[#667eea] peer-checked:to-[#764ba2] peer-disabled:opacity-50"></div>
+            </label>
+          </div>
+        </div>
+
         {/* Quick Stats */}
         <div className="mt-8 grid grid-cols-2 md:grid-cols-4 gap-4">
           <div className="bg-white rounded-xl shadow-[0_2px_12px_rgba(0,0,0,0.04)] p-6 border border-gray-100">
@@ -197,6 +331,18 @@ export function Dashboard() {
           </div>
         </div>
       </div>
+
+      {/* Materials Modal */}
+      <MaterialsModal 
+        open={materialsModalOpen} 
+        onOpenChange={setMaterialsModalOpen} 
+      />
+
+      {/* Essays Modal */}
+      <EssaysModal 
+        open={essaysModalOpen} 
+        onOpenChange={setEssaysModalOpen} 
+      />
     </div>
   );
 }

@@ -14,6 +14,8 @@ import { QuestionEditor } from './components/admin/QuestionEditor';
 import { NotificationComposer } from './components/admin/NotificationComposer';
 import { Analytics } from './components/admin/Analytics';
 import { Settings } from './components/admin/Settings';
+import { Materials as AdminMaterials } from './components/admin/Materials';
+import { Materials as StudentMaterials } from './components/student/Materials';
 
 function App() {
   return (
@@ -26,12 +28,14 @@ function App() {
           <Route path="/login" element={<LoginSignup />} />
           <Route path="/admin/login" element={<AdminLogin />} />
           <Route path="/student/dashboard" element={<Dashboard />} />
+          <Route path="/student/materials" element={<StudentMaterials />} />
           <Route path="/quiz" element={<QuizInterface />} />
           <Route path="/admin" element={<AdminLayout />}>
             <Route index element={<AdminDashboard />} />
             <Route path="dashboard" element={<AdminDashboard />} />
             <Route path="users" element={<UserManagement />} />
             <Route path="questions" element={<QuestionEditor />} />
+            <Route path="materials" element={<AdminMaterials />} />
             <Route path="notifications" element={<NotificationComposer />} />
             <Route path="analytics" element={<Analytics />} />
             <Route path="settings" element={<Settings />} />
