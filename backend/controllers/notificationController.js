@@ -96,8 +96,9 @@ export const sendNotification = async (req, res) => {
     }
 
     // Send WhatsApp messages to all approved users (if WhatsApp is enabled and connected)
+    let whatsappStatus = null;
     if (whatsappEnabled) {
-      const whatsappStatus = getWhatsAppStatus();
+      whatsappStatus = getWhatsAppStatus();
       if (whatsappStatus.isConnected) {
         // Get phone numbers from users (check for phone, phoneNumber, or mobile fields)
         // Also check user's WhatsApp notification preference
@@ -146,7 +147,7 @@ export const sendNotification = async (req, res) => {
         whatsapp: {
           sent: whatsappResults.sent,
           failed: whatsappResults.failed,
-          connected: whatsappStatus.isConnected
+          connected: whatsappStatus?.isConnected || false
         }
       }
     });
