@@ -16,6 +16,7 @@ export function LoginSignup() {
   const [loading, setLoading] = useState(false);
   const [showOTP, setShowOTP] = useState(false);
   const [signupData, setSignupData] = useState(null);
+  const [loginOTPData, setLoginOTPData] = useState(null); // For OTP from login flow
   
   const { login, signup } = useAuth();
   const navigate = useNavigate();
@@ -35,7 +36,28 @@ export function LoginSignup() {
           navigate('/student/dashboard');
         }
       } else {
-        setError(result.error || 'Authentication failed');
+        // Check if this is an email verification required error
+        if (result.error === 'EMAIL_VERIFICATION_REQUIRED') {
+          // Show OTP form instead of error
+          if (result.user) {
+            setLoginOTPData({
+              email: result.user.email,
+              name: result.user.name
+            });
+            setShowOTP(true);
+            setError('');
+          } else {
+            // Fallback: use the email from form
+            setLoginOTPData({
+              email: email,
+              name: '' // Name not available, but OTP form can work without it
+            });
+            setShowOTP(true);
+            setError('');
+          }
+        } else {
+          setError(result.error || 'Authentication failed');
+        }
       }
     } catch (err) {
       setError(err.message || 'An error occurred');
@@ -67,16 +89,25 @@ export function LoginSignup() {
 
   const handleOTPVerified = () => {
     setShowOTP(false);
-    alert('Email verified successfully! Your account is pending admin approval. You will be able to login once approved.');
-    setIsLogin(true);
-    setEmail(signupData.email);
-    setPassword('');
-    setSignupData(null);
+    if (loginOTPData) {
+      // OTP verified from login flow - try to login again
+      alert('Email verified successfully! Please login again.');
+      setLoginOTPData(null);
+      setPassword(''); // Clear password so user can re-enter
+    } else {
+      // OTP verified from signup flow
+      alert('Email verified successfully! Your account is pending admin approval. You will be able to login once approved.');
+      setIsLogin(true);
+      setEmail(signupData?.email || '');
+      setPassword('');
+      setSignupData(null);
+    }
   };
 
   const handleOTPCancel = () => {
     setShowOTP(false);
     setSignupData(null);
+    setLoginOTPData(null);
   };
 
   return (
@@ -97,8 +128,8 @@ export function LoginSignup() {
         <div className={isLogin ? '' : 'max-h-[75vh] overflow-y-auto overflow-x-hidden pr-2'}>
         {showOTP ? (
           <OTPVerification
-            email={signupData?.email}
-            name={signupData?.name}
+            email={loginOTPData?.email || signupData?.email}
+            name={loginOTPData?.name || signupData?.name}
             onVerified={handleOTPVerified}
             onCancel={handleOTPCancel}
           />

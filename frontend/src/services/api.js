@@ -36,7 +36,10 @@ async function apiRequest(endpoint, options = {}) {
     }
 
     if (!response.ok) {
-      throw new Error(data.error || `API request failed with status ${response.status}`);
+      const error = new Error(data.error || `API request failed with status ${response.status}`);
+      // Attach response data to error for special error handling
+      error.response = { data, status: response.status };
+      throw error;
     }
 
     return data;
@@ -53,10 +56,17 @@ export const userAPI = {
     body: JSON.stringify(formData),
   }),
 
-  login: (email, password) => apiRequest('/users/login', {
-    method: 'POST',
-    body: JSON.stringify({ email, password }),
-  }),
+  login: async (email, password) => {
+    try {
+      return await apiRequest('/users/login', {
+        method: 'POST',
+        body: JSON.stringify({ email, password }),
+      });
+    } catch (error) {
+      // Re-throw with response data preserved
+      throw error;
+    }
+  },
 
   getUserStats: (userId) => apiRequest(`/users/${userId}/stats`),
 

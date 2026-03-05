@@ -200,7 +200,16 @@ export const login = async (req, res) => {
     if (!isAdmin) {
       // Check if email is verified (only for non-admin users)
       if (user.emailVerified === false) {
-        return res.status(403).json({ error: 'Please verify your email address before logging in. Check your email for the OTP code.' });
+        // Return user info (without password) so frontend can show OTP form
+        const { password: _, ...userResponse } = user;
+        return res.status(403).json({ 
+          error: 'EMAIL_VERIFICATION_REQUIRED',
+          message: 'Please verify your email address before logging in.',
+          user: {
+            email: user.email,
+            name: user.name
+          }
+        });
       }
 
       // Check if user is approved (default to approved for existing users without status)

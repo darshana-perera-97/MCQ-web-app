@@ -51,6 +51,17 @@ export const AuthProvider = ({ children }) => {
       
       return { success: true, user: userData };
     } catch (error) {
+      // Check if this is an email verification error with user data
+      if (error.response && error.response.data) {
+        const errorData = error.response.data;
+        if (errorData.error === 'EMAIL_VERIFICATION_REQUIRED' && errorData.user) {
+          return { 
+            success: false, 
+            error: 'EMAIL_VERIFICATION_REQUIRED',
+            user: errorData.user
+          };
+        }
+      }
       return { success: false, error: error.message };
     }
   };
