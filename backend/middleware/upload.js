@@ -1,5 +1,6 @@
 import multer from 'multer';
 import path from 'path';
+import fs from 'fs/promises';
 import { fileURLToPath } from 'url';
 
 const __filename = fileURLToPath(import.meta.url);
@@ -87,7 +88,11 @@ export const uploadCSV = multer({
 // PDF file upload storage
 const pdfStorage = multer.diskStorage({
   destination: (req, file, cb) => {
-    cb(null, path.join(__dirname, '../data/files'));
+    const destPath = path.join(__dirname, '../data/files');
+    // Ensure directory exists (synchronous check, create if needed)
+    fs.mkdir(destPath, { recursive: true })
+      .then(() => cb(null, destPath))
+      .catch((error) => cb(error));
   },
   filename: (req, file, cb) => {
     // Generate unique filename

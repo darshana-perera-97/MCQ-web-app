@@ -30,6 +30,15 @@ export const uploadMaterial = async (req, res) => {
       return res.status(400).json({ error: 'Title is required' });
     }
 
+    // Ensure data/files directory exists
+    const filesDir = path.join(__dirname, '../data/files');
+    try {
+      await fs.mkdir(filesDir, { recursive: true });
+    } catch (dirError) {
+      console.error('Error creating files directory:', dirError);
+      // Continue anyway - multer should have created it
+    }
+
     const filePath = `/data/files/${req.file.filename}`;
     const fileSize = req.file.size;
 
@@ -47,11 +56,23 @@ export const uploadMaterial = async (req, res) => {
 
     await materialModel.create(material);
 
-    // Send notifications to all approved students
+    // Send response immediately, then send notifications asynchronously
+    res.status(201).json({
+      message: 'Material uploaded successfully',
+      material,
+      notifications: {
+        email: { sent: 0, failed: 0 },
+        whatsapp: { sent: 0, failed: 0 }
+      }
+    });
+
+    // Send notifications to all approved students (async, don't block response)
     const emailResults = { sent: 0, failed: 0 };
     const whatsappResults = { sent: 0, failed: 0 };
 
-    try {
+    // Run notifications in background
+    (async () => {
+      try {
       // Check notification settings
       const settings = await settingsModel.read();
       const notificationsEnabled = settings.notifications || { emailEnabled: true, whatsappEnabled: true };
@@ -124,22 +145,20 @@ export const uploadMaterial = async (req, res) => {
 
         console.log(`Notifications sent - Email: ${emailResults.sent}/${approvedUsers.length} (enabled: ${emailEnabled}), WhatsApp: ${whatsappResults.sent} (enabled: ${whatsappEnabled})`);
       }
-    } catch (notificationError) {
-      console.error('Error sending notifications:', notificationError);
-      // Don't fail the upload if notifications fail
-    }
-
-    res.status(201).json({
-      message: 'Material uploaded successfully',
-      material,
-      notifications: {
-        email: { sent: emailResults.sent, failed: emailResults.failed },
-        whatsapp: { sent: whatsappResults.sent, failed: whatsappResults.failed }
+      } catch (notificationError) {
+        console.error('Error sending notifications:', notificationError);
+        // Don't fail the upload if notifications fail
       }
-    });
+    })();
   } catch (error) {
     console.error('Upload material error:', error);
-    res.status(500).json({ error: 'Internal server error' });
+    console.error('Error stack:', error.stack);
+    if (!res.headersSent) {
+      res.status(500).json({ 
+        error: 'Internal server error',
+        message: error.message 
+      });
+    }
   }
 };
 
