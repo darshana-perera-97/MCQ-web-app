@@ -150,16 +150,27 @@ export const getAllMaterials = async (req, res) => {
   try {
     const materials = await materialModel.findAll();
     
-    // Sort by date (newest first)
-    materials.sort((a, b) => new Date(b.uploadedAt) - new Date(a.uploadedAt));
+    // Ensure materials is an array
+    const materialsArray = Array.isArray(materials) ? materials : [];
+    
+    // Sort by date (newest first) - handle cases where uploadedAt might be missing
+    materialsArray.sort((a, b) => {
+      const dateA = a.uploadedAt ? new Date(a.uploadedAt) : new Date(0);
+      const dateB = b.uploadedAt ? new Date(b.uploadedAt) : new Date(0);
+      return dateB - dateA;
+    });
     
     res.json({
-      materials,
-      count: materials.length
+      materials: materialsArray,
+      count: materialsArray.length
     });
   } catch (error) {
     console.error('Get materials error:', error);
-    res.status(500).json({ error: 'Internal server error' });
+    console.error('Error details:', error.message, error.stack);
+    res.status(500).json({ 
+      error: 'Internal server error',
+      message: error.message 
+    });
   }
 };
 

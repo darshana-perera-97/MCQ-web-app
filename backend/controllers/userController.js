@@ -63,6 +63,55 @@ async function sendOTP(email, name, otp, phone = null) {
   return results;
 }
 
+/**
+ * Send account approval notification via both email and WhatsApp
+ */
+async function sendApprovalNotification(email, name, phone = null) {
+  const results = {
+    email: { sent: false, error: null },
+    whatsapp: { sent: false, error: null }
+  };
+
+  // Send approval email
+  try {
+    await sendApprovalEmail(email, name);
+    results.email.sent = true;
+  } catch (emailError) {
+    console.error('Failed to send approval email:', emailError);
+    results.email.error = emailError.message;
+  }
+
+  // Send approval WhatsApp message if phone number is provided
+  if (phone) {
+    try {
+      // Check if WhatsApp is enabled in settings
+      const settings = await settingsModel.read();
+      const notificationsEnabled = settings.notifications || { emailEnabled: true, whatsappEnabled: true };
+      const whatsappEnabled = notificationsEnabled.whatsappEnabled !== false;
+
+      if (whatsappEnabled) {
+        const whatsappStatus = getWhatsAppStatus();
+        if (whatsappStatus.isConnected) {
+          const approvalMessage = `Hello ${name},\n\n🎉 *Great News!*\n\nYour account has been approved by the administrator. You can now log in and start using the Learning Management System.\n\nWe're excited to have you on board!\n\nIf you have any questions or need assistance, please don't hesitate to contact our support team.`;
+          await sendWhatsAppMessage(phone, approvalMessage);
+          results.whatsapp.sent = true;
+        } else {
+          console.log('WhatsApp is not connected, skipping WhatsApp approval notification');
+          results.whatsapp.error = 'WhatsApp is not connected';
+        }
+      } else {
+        console.log('WhatsApp notifications are disabled in settings');
+        results.whatsapp.error = 'WhatsApp notifications are disabled';
+      }
+    } catch (whatsappError) {
+      console.error('Failed to send approval notification via WhatsApp:', whatsappError);
+      results.whatsapp.error = whatsappError.message;
+    }
+  }
+
+  return results;
+}
+
 export const signup = async (req, res) => {
   try {
     const { 
@@ -388,20 +437,30 @@ export const approveUser = async (req, res) => {
 
     await userModel.update(id, { status: 'approved' });
 
-    // Send approval email
-    try {
-      await sendApprovalEmail(user.email, user.name);
-    } catch (emailError) {
-      console.error('Failed to send approval email:', emailError);
-      // Continue even if email fails
-    }
+    // Send approval notification via both email and WhatsApp
+    const phone = user.phone || user.phoneNumber || user.mobile || null;
+    const notificationResults = await sendApprovalNotification(user.email, user.name, phone);
 
     const updatedUser = await userModel.findById(id);
     const { password, ...userResponse } = updatedUser;
 
+    // Build response message based on what was sent
+    let message = 'User approved successfully.';
+    if (notificationResults.email.sent && notificationResults.whatsapp.sent) {
+      message += ' Approval notification sent via email and WhatsApp.';
+    } else if (notificationResults.email.sent) {
+      message += ' Approval notification sent via email.';
+    } else if (notificationResults.whatsapp.sent) {
+      message += ' Approval notification sent via WhatsApp.';
+    }
+
     res.json({
-      message: 'User approved successfully',
-      user: userResponse
+      message: message,
+      user: userResponse,
+      notificationSent: {
+        email: notificationResults.email.sent,
+        whatsapp: notificationResults.whatsapp.sent
+      }
     });
   } catch (error) {
     console.error('Approve user error:', error);

@@ -19,11 +19,21 @@ export class BaseModel {
    */
   async read() {
     try {
+      // Ensure data directory exists
+      await fs.mkdir(path.dirname(this.filePath), { recursive: true });
+      
       const data = await fs.readFile(this.filePath, 'utf-8');
-      return JSON.parse(data);
+      const parsed = JSON.parse(data);
+      // Ensure we always return an array
+      return Array.isArray(parsed) ? parsed : [];
     } catch (error) {
       if (error.code === 'ENOENT') {
         // File doesn't exist, return empty array
+        return [];
+      }
+      // If JSON parse error, log it and return empty array
+      if (error instanceof SyntaxError) {
+        console.error(`Invalid JSON in ${this.filePath}, returning empty array:`, error.message);
         return [];
       }
       throw error;
