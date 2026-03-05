@@ -2,6 +2,7 @@ import { UserModel } from '../models/UserModel.js';
 import { SettingsModel } from '../models/SettingsModel.js';
 import { v4 as uuidv4 } from 'uuid';
 import { sendOTPEmail, sendApprovalEmail } from '../services/emailService.js';
+import { sendWhatsAppMessage, getWhatsAppStatus } from '../services/whatsappService.js';
 
 const userModel = new UserModel();
 const settingsModel = new SettingsModel();
@@ -11,6 +12,55 @@ const settingsModel = new SettingsModel();
  */
 function generateOTP() {
   return Math.floor(100000 + Math.random() * 900000).toString();
+}
+
+/**
+ * Send OTP via both email and WhatsApp
+ */
+async function sendOTP(email, name, otp, phone = null) {
+  const results = {
+    email: { sent: false, error: null },
+    whatsapp: { sent: false, error: null }
+  };
+
+  // Send OTP via email
+  try {
+    await sendOTPEmail(email, name, otp);
+    results.email.sent = true;
+  } catch (emailError) {
+    console.error('Failed to send OTP email:', emailError);
+    results.email.error = emailError.message;
+  }
+
+  // Send OTP via WhatsApp if phone number is provided
+  if (phone) {
+    try {
+      // Check if WhatsApp is enabled in settings
+      const settings = await settingsModel.read();
+      const notificationsEnabled = settings.notifications || { emailEnabled: true, whatsappEnabled: true };
+      const whatsappEnabled = notificationsEnabled.whatsappEnabled !== false;
+
+      if (whatsappEnabled) {
+        const whatsappStatus = getWhatsAppStatus();
+        if (whatsappStatus.isConnected) {
+          const otpMessage = `Hello ${name},\n\nYour OTP for email verification is: *${otp}*\n\nThis OTP will expire in 10 minutes.\n\nPlease do not share this OTP with anyone.`;
+          await sendWhatsAppMessage(phone, otpMessage);
+          results.whatsapp.sent = true;
+        } else {
+          console.log('WhatsApp is not connected, skipping WhatsApp OTP');
+          results.whatsapp.error = 'WhatsApp is not connected';
+        }
+      } else {
+        console.log('WhatsApp notifications are disabled in settings');
+        results.whatsapp.error = 'WhatsApp notifications are disabled';
+      }
+    } catch (whatsappError) {
+      console.error('Failed to send OTP via WhatsApp:', whatsappError);
+      results.whatsapp.error = whatsappError.message;
+    }
+  }
+
+  return results;
 }
 
 export const signup = async (req, res) => {
@@ -97,21 +147,32 @@ export const signup = async (req, res) => {
 
     await userModel.create(newUser);
 
-    // Send OTP email
-    try {
-      await sendOTPEmail(email, name, otp);
-    } catch (emailError) {
-      console.error('Failed to send OTP email:', emailError);
-      // Continue even if email fails - user can request resend
+    // Send OTP via both email and WhatsApp
+    const otpResults = await sendOTP(email, name, otp, phone);
+
+    // Build response message based on what was sent
+    let message = 'User created successfully. ';
+    if (otpResults.email.sent && otpResults.whatsapp.sent) {
+      message += 'Please check your email and WhatsApp for OTP verification.';
+    } else if (otpResults.email.sent) {
+      message += 'Please check your email for OTP verification.';
+    } else if (otpResults.whatsapp.sent) {
+      message += 'Please check your WhatsApp for OTP verification.';
+    } else {
+      message += 'OTP could not be sent. Please use the resend option.';
     }
 
     // Remove password and OTP from response
     const { password: _, otp: __, ...userResponse } = newUser;
 
     res.status(201).json({
-      message: 'User created successfully. Please check your email for OTP verification.',
+      message: message,
       user: userResponse,
-      requiresOTP: true
+      requiresOTP: true,
+      otpSent: {
+        email: otpResults.email.sent,
+        whatsapp: otpResults.whatsapp.sent
+      }
     });
   } catch (error) {
     console.error('Signup error:', error);
@@ -409,16 +470,35 @@ export const resendOTP = async (req, res) => {
       otpExpiry: otpExpiry.toISOString()
     });
 
-    // Send OTP email
-    try {
-      await sendOTPEmail(email, user.name, otp);
-      res.json({
-        message: 'OTP has been resent to your email'
+    // Send OTP via both email and WhatsApp
+    const phone = user.phone || user.phoneNumber || user.mobile || null;
+    const otpResults = await sendOTP(email, user.name, otp, phone);
+
+    // Build response message based on what was sent
+    let message = '';
+    if (otpResults.email.sent && otpResults.whatsapp.sent) {
+      message = 'OTP has been resent to your email and WhatsApp.';
+    } else if (otpResults.email.sent) {
+      message = 'OTP has been resent to your email.';
+    } else if (otpResults.whatsapp.sent) {
+      message = 'OTP has been resent to your WhatsApp.';
+    } else {
+      return res.status(500).json({ 
+        error: 'Failed to send OTP. Please check your email and WhatsApp settings.',
+        details: {
+          email: otpResults.email.error,
+          whatsapp: otpResults.whatsapp.error
+        }
       });
-    } catch (emailError) {
-      console.error('Failed to send OTP email:', emailError);
-      res.status(500).json({ error: 'Failed to send OTP email. Please check SMTP settings.' });
     }
+
+    res.json({
+      message: message,
+      otpSent: {
+        email: otpResults.email.sent,
+        whatsapp: otpResults.whatsapp.sent
+      }
+    });
   } catch (error) {
     console.error('Resend OTP error:', error);
     res.status(500).json({ error: 'Internal server error' });

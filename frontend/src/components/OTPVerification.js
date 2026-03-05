@@ -131,7 +131,7 @@ export function OTPVerification({ email, name, onVerified, onCancel }) {
 
       <form onSubmit={handleVerify} className="space-y-6">
         <div>
-          <Label className="text-sm font-medium text-gray-700 mb-3 block">
+          <Label className="text-sm font-medium text-gray-700 mb-3 block text-center">
             Enter Verification Code
           </Label>
           <div className="flex gap-2 justify-center">
