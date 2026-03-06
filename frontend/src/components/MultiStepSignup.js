@@ -3,13 +3,12 @@ import { Button } from './ui/button';
 import { Input } from './ui/input';
 import { Label } from './ui/label';
 import { Textarea } from './ui/textarea';
-import { ChevronRight, ChevronLeft, Check, MapPin, User, Mail, Phone, Briefcase, GraduationCap } from 'lucide-react';
+import { ChevronRight, ChevronLeft, Check, User, Mail, Phone, Briefcase, GraduationCap } from 'lucide-react';
 
 const steps = [
   { id: 1, title: 'Basic Info', icon: User },
   { id: 2, title: 'Contact', icon: Phone },
-  { id: 3, title: 'Location', icon: MapPin },
-  { id: 4, title: 'Education', icon: GraduationCap },
+  { id: 3, title: 'Education', icon: GraduationCap },
 ];
 
 export function MultiStepSignup({ onSubmit, loading, error }) {
@@ -29,12 +28,7 @@ export function MultiStepSignup({ onSubmit, loading, error }) {
     state: '',
     zipCode: '',
     
-    // Step 3: Location
-    currentLocation: '',
-    country: '',
-    timezone: '',
-    
-    // Step 4: Education
+    // Step 3: Education
     highestEducation: '',
     institution: '',
     fieldOfStudy: '',
@@ -72,10 +66,6 @@ export function MultiStepSignup({ onSubmit, loading, error }) {
         if (!formData.zipCode.trim()) newErrors.zipCode = 'Zip code is required';
         break;
       case 3:
-        if (!formData.currentLocation.trim()) newErrors.currentLocation = 'Current location is required';
-        if (!formData.country.trim()) newErrors.country = 'Country is required';
-        break;
-      case 4:
         if (!formData.highestEducation) newErrors.highestEducation = 'Highest education is required';
         if (!formData.institution.trim()) newErrors.institution = 'Institution is required';
         if (!formData.fieldOfStudy.trim()) newErrors.fieldOfStudy = 'Field of study is required';
@@ -130,7 +120,7 @@ export function MultiStepSignup({ onSubmit, loading, error }) {
     <div className="w-full">
       {/* Progress Bar */}
       <div className="mb-8">
-        <div className="flex items-center justify-between mb-4">
+        <div className="flex items-start mb-4">
           {steps.map((step, index) => {
             const StepIcon = step.icon;
             const isActive = currentStep === step.id;
@@ -138,9 +128,9 @@ export function MultiStepSignup({ onSubmit, loading, error }) {
             
             return (
               <div key={step.id} className="flex items-center flex-1">
-                <div className="flex flex-col items-center flex-1">
+                <div className="flex flex-col items-center w-full">
                   <div
-                    className={`w-10 h-10 rounded-full flex items-center justify-center transition-all ${
+                    className={`w-10 h-10 rounded-full flex items-center justify-center transition-all flex-shrink-0 ${
                       isCompleted
                         ? 'bg-gradient-to-r from-[#667eea] to-[#764ba2] text-white'
                         : isActive
@@ -154,14 +144,14 @@ export function MultiStepSignup({ onSubmit, loading, error }) {
                       <StepIcon className="w-5 h-5" />
                     )}
                   </div>
-                  <span className={`mt-2 text-xs font-medium hidden md:block ${
+                  <span className={`mt-2 text-xs font-medium hidden md:block text-center ${
                     isActive ? 'text-gray-900' : 'text-gray-500'
                   }`}>
                     {step.title}
                   </span>
                 </div>
                 {index < steps.length - 1 && (
-                  <div className={`flex-1 h-0.5 mx-2 ${
+                  <div className={`flex-1 h-0.5 mx-2 mt-5 ${
                     isCompleted ? 'bg-gradient-to-r from-[#667eea] to-[#764ba2]' : 'bg-gray-200'
                   }`} />
                 )}
@@ -383,68 +373,8 @@ export function MultiStepSignup({ onSubmit, loading, error }) {
           </div>
         )}
 
-        {/* Step 3: Location */}
+        {/* Step 3: Education */}
         {currentStep === 3 && (
-          <div className="space-y-5 transition-all duration-300">
-            <div className="text-center mb-6">
-              <h2 className="text-xl font-semibold text-gray-900 mb-2">Current Location</h2>
-              <p className="text-sm text-gray-500">Where are you currently working?</p>
-            </div>
-            
-            <div className="space-y-4">
-              <div className="space-y-2">
-                <Label htmlFor="currentLocation" className="text-sm font-medium text-gray-700">
-                  Current Working Location <span className="text-red-500">*</span>
-                </Label>
-                <Input
-                  id="currentLocation"
-                  type="text"
-                  placeholder="e.g., New York, USA"
-                  value={formData.currentLocation}
-                  onChange={(e) => handleChange('currentLocation', e.target.value)}
-                  className={`rounded-lg border-gray-300 focus:border-[#667eea] focus:ring-2 focus:ring-[#667eea]/30 focus:ring-offset-0 h-11 ${
-                    errors.currentLocation ? 'border-red-300' : ''
-                  }`}
-                />
-                {errors.currentLocation && <p className="text-sm text-red-600">{errors.currentLocation}</p>}
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="country" className="text-sm font-medium text-gray-700">
-                  Country <span className="text-red-500">*</span>
-                </Label>
-                <Input
-                  id="country"
-                  type="text"
-                  placeholder="Enter your country"
-                  value={formData.country}
-                  onChange={(e) => handleChange('country', e.target.value)}
-                  className={`rounded-lg border-gray-300 focus:border-[#667eea] focus:ring-2 focus:ring-[#667eea]/30 focus:ring-offset-0 h-11 ${
-                    errors.country ? 'border-red-300' : ''
-                  }`}
-                />
-                {errors.country && <p className="text-sm text-red-600">{errors.country}</p>}
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="timezone" className="text-sm font-medium text-gray-700">
-                  Timezone (Optional)
-                </Label>
-                <Input
-                  id="timezone"
-                  type="text"
-                  placeholder="e.g., UTC-5, EST"
-                  value={formData.timezone}
-                  onChange={(e) => handleChange('timezone', e.target.value)}
-                  className="rounded-lg border-gray-300 focus:border-[#667eea] focus:ring-2 focus:ring-[#667eea]/30 focus:ring-offset-0 h-11"
-                />
-              </div>
-            </div>
-          </div>
-        )}
-
-        {/* Step 4: Education */}
-        {currentStep === 4 && (
           <div className="space-y-5 transition-all duration-300">
             <div className="text-center mb-6">
               <h2 className="text-xl font-semibold text-gray-900 mb-2">Education Details</h2>

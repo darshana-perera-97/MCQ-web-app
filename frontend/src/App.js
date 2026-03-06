@@ -1,5 +1,6 @@
 import { BrowserRouter, Routes, Route } from 'react-router-dom';
 import { AuthProvider } from './context/AuthContext';
+import { LanguageProvider } from './context/LanguageContext';
 import { LandingPage } from './components/LandingPage';
 import { LandingPageSinhala } from './components/LandingPageSinhala';
 import { WelcomeScreen } from './components/WelcomeScreen';
@@ -20,8 +21,9 @@ import { Summarize } from './components/student/Summarize';
 
 function App() {
   return (
-    <AuthProvider>
-      <BrowserRouter>
+    <LanguageProvider>
+      <AuthProvider>
+        <BrowserRouter>
         <Routes>
           <Route path="/" element={<LandingPage />} />
           <Route path="/sin" element={<LandingPageSinhala />} />
@@ -44,7 +46,8 @@ function App() {
           </Route>
         </Routes>
       </BrowserRouter>
-    </AuthProvider>
+      </AuthProvider>
+    </LanguageProvider>
   );
 }
 

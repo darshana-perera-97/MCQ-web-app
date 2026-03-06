@@ -125,7 +125,7 @@ export function LoginSignup() {
           </p>
         </div>
 
-        <div className={isLogin ? '' : 'max-h-[75vh] overflow-y-auto overflow-x-hidden pr-2'}>
+        <div>
         {showOTP ? (
           <OTPVerification
             email={loginOTPData?.email || signupData?.email}

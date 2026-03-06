@@ -2,9 +2,10 @@ import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ProgressRing } from '../common/ProgressRing';
 import { useAuth } from '../../context/AuthContext';
+import { useLanguage } from '../../context/LanguageContext';
 import { userAPI, mcqAPI, essayAPI, notificationAPI } from '../../services/api';
 import { Button } from '../ui/button';
-import { BookOpen, TrendingUp, Award, LogOut, FileText, Bell, PenTool, FileCheck } from 'lucide-react';
+import { BookOpen, TrendingUp, Award, LogOut, FileText, Bell, PenTool, FileCheck, Languages } from 'lucide-react';
 import { MaterialsModal } from './MaterialsModal';
 import { EssaysModal } from './EssaysModal';
 import { NotificationsDrawer } from './NotificationsDrawer';
@@ -12,6 +13,7 @@ import { NotificationsDrawer } from './NotificationsDrawer';
 export function Dashboard() {
   const navigate = useNavigate();
   const { user, logout } = useAuth();
+  const { language, toggleLanguage } = useLanguage();
 
   const handleLogout = () => {
     logout();
@@ -147,10 +149,22 @@ export function Dashboard() {
       <div className="bg-gradient-to-r from-[#667eea] to-[#764ba2] text-white px-4 sm:px-6 lg:px-8 py-4 sm:py-6 lg:py-8">
         <div className="max-w-6xl mx-auto flex items-center justify-between">
           <div>
-            <h1 className="text-xl sm:text-2xl lg:text-3xl font-semibold mb-1 sm:mb-2">Welcome, {userStats.name}!</h1>
-            <p className="text-white/90 text-sm sm:text-base">Ready to challenge yourself today?</p>
+            <h1 className="text-xl sm:text-2xl lg:text-3xl font-semibold mb-1 sm:mb-2">
+              {language === 'si' ? 'සාදරයෙන් පිළිගනිමු' : 'Welcome'}, {userStats.name}!
+            </h1>
+            <p className="text-white/90 text-sm sm:text-base">
+              {language === 'si' ? 'අද ඔබට අභියෝග කිරීමට සූදානම්ද?' : 'Ready to challenge yourself today?'}
+            </p>
           </div>
           <div className="flex items-center gap-2 sm:gap-3">
+            <Button
+              onClick={toggleLanguage}
+              className="bg-white/20 hover:bg-white/30 text-white flex items-center gap-1 sm:gap-2 rounded-xl px-2 sm:px-3 py-1.5 sm:py-2 font-medium shadow-sm transition-all border border-white/30"
+              title={language === 'si' ? 'Switch to English' : 'සිංහලට මාරු වන්න'}
+            >
+              <Languages className="w-4 h-4 sm:w-5 sm:h-5" />
+              <span className="text-xs sm:text-sm font-medium">{language === 'si' ? 'EN' : 'සිං'}</span>
+            </Button>
             <Button
               onClick={() => {
                 setNotificationsDrawerOpen(true);
@@ -159,10 +173,10 @@ export function Dashboard() {
               className={`bg-white text-[#667eea] hover:bg-white/90 flex items-center gap-1 sm:gap-2 rounded-xl px-2 sm:px-4 py-1.5 sm:py-2 font-medium shadow-sm transition-all relative ${
                 hasNewNotifications ? 'ring-2 ring-[#667eea] ring-offset-2 animate-pulse' : ''
               }`}
-              title="View notifications"
+              title={language === 'si' ? 'දැනුම්දීම් බලන්න' : 'View notifications'}
             >
               <Bell className={`w-4 h-4 sm:w-5 sm:h-5 ${hasNewNotifications ? 'animate-pulse' : ''}`} />
-              <span className="hidden sm:inline">Notifications</span>
+              <span className="hidden sm:inline">{language === 'si' ? 'දැනුම්දීම්' : 'Notifications'}</span>
               {hasNewNotifications && (
                 <span className="absolute -top-1 -right-1 w-3 h-3 bg-red-500 rounded-full border-2 border-white animate-ping"></span>
               )}
@@ -170,9 +184,10 @@ export function Dashboard() {
             <Button
               onClick={handleLogout}
               className="bg-white text-[#667eea] hover:bg-white/90 flex items-center gap-1 sm:gap-2 rounded-xl px-2 sm:px-4 py-1.5 sm:py-2 font-medium shadow-sm transition-all"
+              title={language === 'si' ? 'පිටවීම' : 'Logout'}
             >
               <LogOut className="w-4 h-4 sm:w-5 sm:h-5" />
-              <span className="hidden sm:inline">Logout</span>
+              <span className="hidden sm:inline">{language === 'si' ? 'පිටවීම' : 'Logout'}</span>
             </Button>
           </div>
         </div>
@@ -184,7 +199,7 @@ export function Dashboard() {
           {/* Progress Card */}
           <div className="bg-white rounded-2xl shadow-[0_4px_24px_rgba(0,0,0,0.06)] p-8 border border-gray-100">
             <div className="flex flex-col items-center">
-              <h3 className="text-lg font-medium text-gray-900 mb-6">Daily MCQ Progress</h3>
+              <h3 className="text-lg font-medium text-gray-900 mb-6">{language === 'si' ? 'දිනපතා MCQ ප්‍රගතිය' : 'Daily MCQ Progress'}</h3>
               <ProgressRing 
                 completed={dailyCompleted} 
                 total={dailyLimit}
@@ -192,7 +207,9 @@ export function Dashboard() {
                 strokeWidth={10}
               />
               <p className="text-sm text-gray-500 mt-6 text-center">
-                {remainingToday} questions remaining today
+                {language === 'si' 
+                  ? `${remainingToday} ප්‍රශ්න අදට ඉතිරිව ඇත`
+                  : `${remainingToday} questions remaining today`}
               </p>
             </div>
           </div>
@@ -204,14 +221,14 @@ export function Dashboard() {
                 <div className="p-3 bg-white/20 rounded-xl backdrop-blur-sm">
                   <BookOpen className="w-6 h-6" />
                 </div>
-                <h3 className="text-lg font-medium">Start Quiz</h3>
+                <h3 className="text-lg font-medium">{language === 'si' ? 'විභාගය ආරම්භ කරන්න' : 'Start Quiz'}</h3>
               </div>
               <p className="text-white/90 mb-6 flex-1">
                 {canTakeQuiz 
-                  ? 'Practice MCQ questions and test your knowledge!'
+                  ? (language === 'si' ? 'MCQ ප්‍රශ්න පුහුණු කර ඔබේ දැනුම පරීක්ෂා කරන්න!' : 'Practice MCQ questions and test your knowledge!')
                   : remainingToday === 0
-                    ? "You've reached your daily limit. Come back tomorrow!"
-                    : "You've completed all available questions!"
+                    ? (language === 'si' ? 'ඔබ දිනපතා සීමාවට ළඟා වී ඇත. හෙට නැවත එන්න!' : "You've reached your daily limit. Come back tomorrow!")
+                    : (language === 'si' ? 'ඔබ සියලුම ප්‍රශ්න සම්පූර්ණ කර ඇත!' : "You've completed all available questions!")
                 }
               </p>
               <Button 
@@ -219,7 +236,7 @@ export function Dashboard() {
                 disabled={!canTakeQuiz}
                 className="w-full bg-white text-[#667eea] hover:bg-white/90 rounded-xl h-12 font-medium disabled:opacity-50 disabled:cursor-not-allowed"
               >
-                {canTakeQuiz ? 'Start MCQ Quiz' : 'Completed'}
+                {canTakeQuiz ? (language === 'si' ? 'MCQ විභාගය ආරම්භ කරන්න' : 'Start MCQ Quiz') : (language === 'si' ? 'සම්පූර්ණ' : 'Completed')}
               </Button>
             </div>
           </div>
@@ -231,16 +248,18 @@ export function Dashboard() {
                 <div className="p-3 bg-white/20 rounded-xl backdrop-blur-sm">
                   <FileText className="w-6 h-6" />
                 </div>
-                <h3 className="text-lg font-medium">Study Materials</h3>
+                <h3 className="text-lg font-medium">{language === 'si' ? 'අධ්‍යයන ද්‍රව්‍ය' : 'Study Materials'}</h3>
               </div>
               <p className="text-white/90 mb-6 flex-1">
-                Access PDFs, notes, and study resources uploaded by your instructors.
+                {language === 'si' 
+                  ? 'ඔබේ ගුරුවරුන් විසින් උඩුගත කරන ලද PDF, සටහන් සහ අධ්‍යයන සම්පත් ප්‍රවේශ වන්න.'
+                  : 'Access PDFs, notes, and study resources uploaded by your instructors.'}
               </p>
               <Button 
                 onClick={() => setMaterialsModalOpen(true)}
                 className="w-full bg-white text-[#f5576c] hover:bg-white/90 rounded-xl h-12 font-medium"
               >
-                View Materials
+                {language === 'si' ? 'ද්‍රව්‍ය බලන්න' : 'View Materials'}
               </Button>
             </div>
           </div>
@@ -252,20 +271,22 @@ export function Dashboard() {
                 <div className="p-3 bg-white/20 rounded-xl backdrop-blur-sm">
                   <PenTool className="w-6 h-6" />
                 </div>
-                <h3 className="text-lg font-medium">Essay Questions</h3>
+                <h3 className="text-lg font-medium">{language === 'si' ? 'රචනා ප්‍රශ්න' : 'Essay Questions'}</h3>
               </div>
               <p className="text-white/90 mb-6 flex-1">
-                Practice essay type questions and improve your writing skills.
+                {language === 'si' 
+                  ? 'රචනා වර්ගයේ ප්‍රශ්න පුහුණු කර ඔබේ ලිවීමේ කුසලතා වැඩි දියුණු කරන්න.'
+                  : 'Practice essay type questions and improve your writing skills.'}
               </p>
               <div className="mb-4">
-                <div className="text-sm text-white/80 mb-1">Available Questions</div>
+                <div className="text-sm text-white/80 mb-1">{language === 'si' ? 'ලබා ගත හැකි ප්‍රශ්න' : 'Available Questions'}</div>
                 <div className="text-2xl font-semibold">{essays.length}</div>
               </div>
               <Button 
                 onClick={() => setEssaysModalOpen(true)}
                 className="w-full bg-white text-[#fa709a] hover:bg-white/90 rounded-xl h-12 font-medium"
               >
-                View Essays
+                {language === 'si' ? 'රචනා බලන්න' : 'View Essays'}
               </Button>
             </div>
           </div>
@@ -277,16 +298,18 @@ export function Dashboard() {
                 <div className="p-3 bg-white/20 rounded-xl backdrop-blur-sm">
                   <FileCheck className="w-6 h-6" />
                 </div>
-                <h3 className="text-lg font-medium">Summarize</h3>
+                <h3 className="text-lg font-medium">{language === 'si' ? 'සාරාංශ' : 'Summarize'}</h3>
               </div>
               <p className="text-white/90 mb-6 flex-1">
-                Complete summary exercises to improve your comprehension and writing skills.
+                {language === 'si' 
+                  ? 'සාරාංශ අභ්‍යාස සම්පූර්ණ කර ඔබේ අවබෝධය සහ ලිවීමේ කුසලතා වැඩි දියුණු කරන්න.'
+                  : 'Complete summary exercises to improve your comprehension and writing skills.'}
               </p>
               <Button 
                 onClick={() => navigate('/student/summarize')}
                 className="w-full bg-white text-[#4facfe] hover:bg-white/90 rounded-xl h-12 font-medium"
               >
-                View Summaries
+                {language === 'si' ? 'සාරාංශ බලන්න' : 'View Summaries'}
               </Button>
             </div>
           </div>
@@ -298,7 +321,7 @@ export function Dashboard() {
                 <div className="p-3 bg-gradient-to-br from-[#00c6ff] to-[#0072ff] rounded-xl">
                   <TrendingUp className="w-6 h-6 text-white" />
                 </div>
-                <h3 className="text-lg font-medium text-gray-900">Latest Performance</h3>
+                <h3 className="text-lg font-medium text-gray-900">{language === 'si' ? 'නවතම කාර්ය සාධනය' : 'Latest Performance'}</h3>
               </div>
               <div className="flex items-end gap-2 mb-4">
                 <div className="text-5xl font-semibold bg-gradient-to-br from-[#00c6ff] to-[#0072ff] bg-clip-text text-transparent">
@@ -306,7 +329,7 @@ export function Dashboard() {
                 </div>
               </div>
               <p className="text-sm text-gray-500">
-                Total points earned
+                {language === 'si' ? 'උපයන ලද මුළු ලකුණු' : 'Total points earned'}
               </p>
             </div>
           </div>
@@ -319,8 +342,8 @@ export function Dashboard() {
                   <Award className="w-8 h-8 text-white" />
                 </div>
                 <div>
-                  <h3 className="text-lg font-medium text-gray-900 mb-1">Total Score</h3>
-                  <p className="text-sm text-gray-500">Your cumulative points</p>
+                  <h3 className="text-lg font-medium text-gray-900 mb-1">{language === 'si' ? 'මුළු ලකුණු' : 'Total Score'}</h3>
+                  <p className="text-sm text-gray-500">{language === 'si' ? 'ඔබේ සමුච්චිත ලකුණු' : 'Your cumulative points'}</p>
                 </div>
               </div>
               <div className="text-5xl font-semibold bg-gradient-to-br from-[#84fab0] to-[#8fd3f4] bg-clip-text text-transparent">
@@ -334,15 +357,15 @@ export function Dashboard() {
         <div className="mt-8 w-full bg-gradient-to-r from-[#667eea] to-[#764ba2] rounded-2xl shadow-[0_4px_24px_rgba(102,126,234,0.2)] p-6 text-white">
           <div className="flex items-center justify-between">
             <div>
-              <h3 className="text-xl font-semibold mb-1">Keep Learning!</h3>
-              <p className="text-white/90">Continue practicing to improve your score and knowledge</p>
+              <h3 className="text-xl font-semibold mb-1">{language === 'si' ? 'ඉගෙනීම දිගටම කරගෙන යන්න!' : 'Keep Learning!'}</h3>
+              <p className="text-white/90">{language === 'si' ? 'ඔබේ ලකුණු සහ දැනුම වැඩි දියුණු කිරීමට පුහුණු වීම දිගටම කරගෙන යන්න' : 'Continue practicing to improve your score and knowledge'}</p>
             </div>
             <Button 
               onClick={() => navigate('/quiz')}
               disabled={!canTakeQuiz}
               className="bg-white text-[#667eea] hover:bg-white/90 rounded-xl h-12 px-6 font-medium disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              {canTakeQuiz ? 'Start Quiz Now' : 'Completed'}
+              {canTakeQuiz ? (language === 'si' ? 'දැන් විභාගය ආරම්භ කරන්න' : 'Start Quiz Now') : (language === 'si' ? 'සම්පූර්ණ' : 'Completed')}
             </Button>
           </div>
         </div>
@@ -353,8 +376,8 @@ export function Dashboard() {
             <div className="flex items-center gap-3">
               <Bell className="w-5 h-5 text-[#667eea]" />
               <div>
-                <h3 className="text-lg font-semibold text-gray-900">Notifications</h3>
-                <p className="text-sm text-gray-600">Receive notifications via email and WhatsApp</p>
+                <h3 className="text-lg font-semibold text-gray-900">{language === 'si' ? 'දැනුම්දීම්' : 'Notifications'}</h3>
+                <p className="text-sm text-gray-600">{language === 'si' ? 'විද්‍යුත් තැපෑල සහ WhatsApp හරහා දැනුම්දීම් ලබා ගන්න' : 'Receive notifications via email and WhatsApp'}</p>
               </div>
             </div>
             <label className="relative inline-flex items-center cursor-pointer">
@@ -376,25 +399,25 @@ export function Dashboard() {
             <div className="text-2xl font-semibold text-gray-900 mb-1">
               {dailyCompleted}
             </div>
-            <div className="text-sm text-gray-500">Completed Today</div>
+            <div className="text-sm text-gray-500">{language === 'si' ? 'අද සම්පූර්ණ කරන ලදී' : 'Completed Today'}</div>
           </div>
           <div className="bg-white rounded-xl shadow-[0_2px_12px_rgba(0,0,0,0.04)] p-6 border border-gray-100">
             <div className="text-2xl font-semibold text-gray-900 mb-1">
               {remainingToday}
             </div>
-            <div className="text-sm text-gray-500">Remaining Today</div>
+            <div className="text-sm text-gray-500">{language === 'si' ? 'අදට ඉතිරි' : 'Remaining Today'}</div>
           </div>
           <div className="bg-white rounded-xl shadow-[0_2px_12px_rgba(0,0,0,0.04)] p-6 border border-gray-100">
             <div className="text-2xl font-semibold text-gray-900 mb-1">
               {dailyLimit}
             </div>
-            <div className="text-sm text-gray-500">Daily Limit</div>
+            <div className="text-sm text-gray-500">{language === 'si' ? 'දිනපතා සීමාව' : 'Daily Limit'}</div>
           </div>
           <div className="bg-white rounded-xl shadow-[0_2px_12px_rgba(0,0,0,0.04)] p-6 border border-gray-100">
             <div className="text-2xl font-semibold text-gray-900 mb-1">
               {userStats.score || 0}
             </div>
-            <div className="text-sm text-gray-500">Total Score</div>
+            <div className="text-sm text-gray-500">{language === 'si' ? 'මුළු ලකුණු' : 'Total Score'}</div>
           </div>
         </div>
       </div>
