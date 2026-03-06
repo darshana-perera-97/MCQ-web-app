@@ -3,6 +3,7 @@ const { Client, LocalAuth } = pkg;
 import QRCode from 'qrcode';
 import path from 'path';
 import { fileURLToPath } from 'url';
+import fs from 'fs/promises';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -11,6 +12,18 @@ let whatsappClient = null;
 let qrCodeData = null;
 let isConnecting = false;
 let connectionStatus = 'disconnected'; // disconnected, connecting, connected, failed
+
+const AUTH_PATH = path.join(__dirname, '../.wwebjs_auth');
+
+const safeRmAuthDir = async () => {
+  try {
+    await fs.rm(AUTH_PATH, { recursive: true, force: true });
+    return true;
+  } catch (err) {
+    console.error('Error removing WhatsApp auth directory:', err);
+    return false;
+  }
+};
 
 /**
  * Initialize WhatsApp client
@@ -23,7 +36,7 @@ export const initializeWhatsApp = () => {
   try {
     whatsappClient = new Client({
       authStrategy: new LocalAuth({
-        dataPath: path.join(__dirname, '../.wwebjs_auth')
+        dataPath: AUTH_PATH
       }),
       puppeteer: {
         headless: true,
@@ -62,6 +75,7 @@ export const initializeWhatsApp = () => {
     whatsappClient.on('authenticated', () => {
       console.log('WhatsApp client authenticated');
       connectionStatus = 'connected';
+      isConnecting = false;
     });
 
     // Authentication failure event
@@ -78,6 +92,7 @@ export const initializeWhatsApp = () => {
       connectionStatus = 'disconnected';
       qrCodeData = null;
       whatsappClient = null;
+      isConnecting = false;
     });
 
     return whatsappClient;
@@ -114,8 +129,13 @@ export const connectWhatsApp = async () => {
   } catch (error) {
     console.error('Error connecting WhatsApp:', error);
     connectionStatus = 'failed';
-    isConnecting = false;
     throw error;
+  } finally {
+    // If initialization fails synchronously before events fire, ensure flag is reset.
+    // If it succeeds, the ready/authenticated handlers will also set it false.
+    if (connectionStatus !== 'connecting') {
+      isConnecting = false;
+    }
   }
 };
 
@@ -134,18 +154,57 @@ export const getWhatsAppStatus = () => {
 /**
  * Disconnect WhatsApp
  */
-export const disconnectWhatsApp = async () => {
+export const disconnectWhatsApp = async ({ clearSession = false } = {}) => {
   try {
+    const hadClient = !!whatsappClient;
+
     if (whatsappClient) {
-      await whatsappClient.logout();
-      await whatsappClient.destroy();
-      whatsappClient = null;
-      qrCodeData = null;
-      connectionStatus = 'disconnected';
-      isConnecting = false;
-      return { success: true, message: 'WhatsApp disconnected successfully' };
+      // Prevent late events from toggling status after we disconnect.
+      try {
+        whatsappClient.removeAllListeners();
+      } catch {
+        // ignore
+      }
+
+      // Logout may fail in some states; still attempt destroy so the browser is closed.
+      try {
+        await whatsappClient.logout();
+      } catch (err) {
+        console.warn('WhatsApp logout failed (continuing to destroy):', err?.message || err);
+      }
+
+      try {
+        await whatsappClient.destroy();
+      } catch (err) {
+        console.warn('WhatsApp destroy failed:', err?.message || err);
+      }
     }
-    return { success: true, message: 'WhatsApp was not connected' };
+
+    whatsappClient = null;
+    qrCodeData = null;
+    connectionStatus = 'disconnected';
+    isConnecting = false;
+
+    let sessionCleared = false;
+    if (clearSession) {
+      sessionCleared = await safeRmAuthDir();
+    }
+
+    if (!hadClient && !clearSession) {
+      return { success: true, message: 'WhatsApp was not connected' };
+    }
+
+    if (clearSession) {
+      return {
+        success: true,
+        message: sessionCleared
+          ? 'WhatsApp disconnected and session cleared successfully'
+          : 'WhatsApp disconnected, but failed to clear session directory',
+        sessionCleared
+      };
+    }
+
+    return { success: true, message: 'WhatsApp disconnected successfully' };
   } catch (error) {
     console.error('Error disconnecting WhatsApp:', error);
     throw error;
@@ -153,11 +212,42 @@ export const disconnectWhatsApp = async () => {
 };
 
 /**
+ * Check if WhatsApp client is actually valid and ready
+ */
+const isClientValid = () => {
+  return !!(whatsappClient && connectionStatus === 'connected');
+};
+
+/**
+ * Handle detached frame errors by marking client as disconnected
+ */
+const handleDetachedFrameError = (error) => {
+  const errorMessage = error?.message || '';
+  if (errorMessage.includes('detached Frame') || errorMessage.includes('Target closed') || errorMessage.includes('Session closed')) {
+    console.warn('WhatsApp client frame detached - marking as disconnected');
+    connectionStatus = 'disconnected';
+    qrCodeData = null;
+    isConnecting = false;
+    // Clean up the client reference to prevent further use
+    if (whatsappClient) {
+      try {
+        whatsappClient.removeAllListeners();
+      } catch (e) {
+        // Ignore cleanup errors
+      }
+      whatsappClient = null;
+    }
+    return true; // Indicates this was a detached frame error
+  }
+  return false;
+};
+
+/**
  * Send WhatsApp message
  */
 export const sendWhatsAppMessage = async (phoneNumber, message) => {
   try {
-    if (!whatsappClient || connectionStatus !== 'connected') {
+    if (!isClientValid()) {
       throw new Error('WhatsApp is not connected');
     }
 
@@ -170,6 +260,10 @@ export const sendWhatsAppMessage = async (phoneNumber, message) => {
     await whatsappClient.sendMessage(chatId, message);
     return { success: true, message: 'Message sent successfully' };
   } catch (error) {
+    // Check if this is a detached frame error
+    if (handleDetachedFrameError(error)) {
+      throw new Error('WhatsApp connection lost - please reconnect');
+    }
     console.error('Error sending WhatsApp message:', error);
     throw error;
   }
@@ -189,12 +283,20 @@ export const sendWhatsAppMessageToMultiple = async (phoneNumbers, message) => {
   const results = [];
   const errors = [];
 
-  if (!whatsappClient || connectionStatus !== 'connected') {
+  if (!isClientValid()) {
     throw new Error('WhatsApp is not connected');
   }
 
   for (const phoneNumber of phoneNumbers) {
     try {
+      // Check if client is still valid before each send attempt
+      if (!isClientValid()) {
+        const errorMsg = 'WhatsApp connection lost during bulk send';
+        errors.push({ phoneNumber, error: errorMsg });
+        results.push({ phoneNumber, success: false, error: errorMsg });
+        continue;
+      }
+
       // Format phone number (remove + and spaces, add country code if needed)
       const formattedNumber = phoneNumber.replace(/[^0-9]/g, '');
       const chatId = formattedNumber.includes('@c.us') 
@@ -205,6 +307,19 @@ export const sendWhatsAppMessageToMultiple = async (phoneNumbers, message) => {
       results.push({ phoneNumber, success: true });
       console.log(`WhatsApp message sent to ${phoneNumber}`);
     } catch (error) {
+      // Check if this is a detached frame error
+      if (handleDetachedFrameError(error)) {
+        // Mark remaining numbers as failed due to connection loss
+        const remainingNumbers = phoneNumbers.slice(phoneNumbers.indexOf(phoneNumber));
+        for (const remainingNumber of remainingNumbers) {
+          if (!results.find(r => r.phoneNumber === remainingNumber)) {
+            errors.push({ phoneNumber: remainingNumber, error: 'WhatsApp connection lost' });
+            results.push({ phoneNumber: remainingNumber, success: false, error: 'WhatsApp connection lost' });
+          }
+        }
+        break; // Stop trying to send remaining messages
+      }
+      
       console.error(`Error sending WhatsApp message to ${phoneNumber}:`, error);
       errors.push({ phoneNumber, error: error.message });
       results.push({ phoneNumber, success: false, error: error.message });

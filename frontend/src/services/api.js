@@ -59,8 +59,8 @@ export const userAPI = {
   login: async (email, password) => {
     try {
       return await apiRequest('/users/login', {
-        method: 'POST',
-        body: JSON.stringify({ email, password }),
+    method: 'POST',
+    body: JSON.stringify({ email, password }),
       });
     } catch (error) {
       // Re-throw with response data preserved
@@ -328,6 +328,7 @@ export const whatsappAPI = {
 
   disconnect: (adminSecret) => apiRequest('/whatsapp/disconnect', {
     method: 'POST',
+    body: JSON.stringify({ clearSession: true }),
     adminSecret,
   }),
 

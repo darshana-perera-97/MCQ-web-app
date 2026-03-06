@@ -39,7 +39,8 @@ export const connectWhatsApp = async (req, res) => {
  */
 export const disconnectWhatsApp = async (req, res) => {
   try {
-    const result = await disconnectWhatsAppService();
+    const { clearSession } = req.body || {};
+    const result = await disconnectWhatsAppService({ clearSession: !!clearSession });
     res.json(result);
   } catch (error) {
     console.error('Disconnect WhatsApp error:', error);

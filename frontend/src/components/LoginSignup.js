@@ -54,9 +54,9 @@ export function LoginSignup() {
             });
             setShowOTP(true);
             setError('');
-          }
-        } else {
-          setError(result.error || 'Authentication failed');
+        }
+      } else {
+        setError(result.error || 'Authentication failed');
         }
       }
     } catch (err) {
@@ -96,11 +96,11 @@ export function LoginSignup() {
       setPassword(''); // Clear password so user can re-enter
     } else {
       // OTP verified from signup flow
-      alert('Email verified successfully! Your account is pending admin approval. You will be able to login once approved.');
-      setIsLogin(true);
+    alert('Email verified successfully! Your account is pending admin approval. You will be able to login once approved.');
+    setIsLogin(true);
       setEmail(signupData?.email || '');
-      setPassword('');
-      setSignupData(null);
+    setPassword('');
+    setSignupData(null);
     }
   };
 
