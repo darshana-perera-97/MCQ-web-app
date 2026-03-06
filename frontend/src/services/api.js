@@ -394,3 +394,27 @@ export const setAdminSecret = (secret) => {
   localStorage.setItem('adminSecret', secret);
 };
 
+// Summary API
+export const summaryAPI = {
+  getAll: () => apiRequest('/summaries'),
+
+  getById: (summaryId) => apiRequest(`/summaries/${summaryId}`),
+
+  create: (summaryData, adminSecret) => apiRequest('/summaries', {
+    method: 'POST',
+    body: JSON.stringify(summaryData),
+    adminSecret,
+  }),
+
+  update: (summaryId, updates, adminSecret) => apiRequest(`/summaries/${summaryId}`, {
+    method: 'PUT',
+    body: JSON.stringify(updates),
+    adminSecret,
+  }),
+
+  delete: (summaryId, adminSecret) => apiRequest(`/summaries/${summaryId}`, {
+    method: 'DELETE',
+    adminSecret,
+  }),
+};
+

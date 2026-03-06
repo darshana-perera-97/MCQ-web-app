@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { mcqAPI, essayAPI, getAdminSecret } from '../../services/api';
+import { mcqAPI, essayAPI, summaryAPI, getAdminSecret } from '../../services/api';
 import { BACKEND_URL } from '../../config/api';
 import { Button } from '../ui/button';
 import { Input } from '../ui/input';
@@ -18,14 +18,15 @@ import {
 export function QuestionEditor() {
   const [questions, setQuestions] = useState([]);
   const [essays, setEssays] = useState([]);
+  const [summaries, setSummaries] = useState([]);
   const [searchQuery, setSearchQuery] = useState('');
-  const [questionTypeFilter, setQuestionTypeFilter] = useState('all'); // 'all', 'mcq', 'essay'
+  const [questionTypeFilter, setQuestionTypeFilter] = useState('all'); // 'all', 'mcq', 'essay', 'summary'
   const [loading, setLoading] = useState(true);
   const [csvFile, setCsvFile] = useState(null);
   const [csvUploading, setCsvUploading] = useState(false);
   const [csvUploadResult, setCsvUploadResult] = useState(null);
   const [selectedQuestion, setSelectedQuestion] = useState(null);
-  const [selectedQuestionType, setSelectedQuestionType] = useState(null); // 'mcq' or 'essay'
+  const [selectedQuestionType, setSelectedQuestionType] = useState(null); // 'mcq', 'essay', or 'summary'
 
   // Generate auto ID for MCQ
   const generateAutoId = () => {
@@ -64,6 +65,13 @@ export function QuestionEditor() {
     category: '',
   });
 
+  // Summary Form State
+  const [summaryForm, setSummaryForm] = useState({
+    title: '',
+    question: '',
+    paragraphs: [''],
+  });
+
   const [activeTab, setActiveTab] = useState('add');
 
   useEffect(() => {
@@ -78,6 +86,7 @@ export function QuestionEditor() {
     if (activeTab === 'manage') {
       loadQuestions();
       loadEssays();
+      loadSummaries();
     }
   }, [activeTab]);
 
@@ -110,6 +119,16 @@ export function QuestionEditor() {
     }
   };
 
+  const loadSummaries = async () => {
+    try {
+      const response = await summaryAPI.getAll();
+      setSummaries(response.summaries || []);
+    } catch (err) {
+      console.error('Error loading summaries:', err);
+      setSummaries([]);
+    }
+  };
+
   const filteredQuestions = questions.filter(
     (q) =>
       q.question?.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -130,12 +149,20 @@ export function QuestionEditor() {
       return { items: filteredQuestions, type: 'mcq' };
     } else if (questionTypeFilter === 'essay') {
       return { items: filteredEssays, type: 'essay' };
+    } else if (questionTypeFilter === 'summary') {
+      const filteredSummaries = summaries.filter(
+        (s) =>
+          s.title?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+          s.id?.toLowerCase().includes(searchQuery.toLowerCase())
+      );
+      return { items: filteredSummaries, type: 'summary' };
     } else {
-      // Combine both types
+      // Combine all types
       return { 
         items: [
           ...filteredQuestions.map(q => ({ ...q, _type: 'mcq' })),
-          ...filteredEssays.map(e => ({ ...e, _type: 'essay' }))
+          ...filteredEssays.map(e => ({ ...e, _type: 'essay' })),
+          ...summaries.map(s => ({ ...s, _type: 'summary' }))
         ], 
         type: 'all' 
       };
@@ -268,23 +295,26 @@ export function QuestionEditor() {
   };
 
   const handleDeleteQuestion = async (id, type = 'mcq') => {
-    if (!window.confirm('Are you sure you want to delete this question?')) return;
+    if (!window.confirm('Are you sure you want to delete this item?')) return;
     
     try {
       const adminSecret = getAdminSecret();
       if (type === 'essay') {
         await essayAPI.delete(id, adminSecret);
         await loadEssays();
+      } else if (type === 'summary') {
+        await summaryAPI.delete(id, adminSecret);
+        await loadSummaries();
       } else {
         await mcqAPI.delete(id, adminSecret);
         await loadQuestions();
       }
-      // Close view if the deleted question was being viewed
+      // Close view if the deleted item was being viewed
       if (selectedQuestion && selectedQuestion.id === id) {
         handleCloseQuestionView();
       }
     } catch (err) {
-      alert(err.message || 'Failed to delete question');
+      alert(err.message || 'Failed to delete item');
     }
   };
 
@@ -336,6 +366,12 @@ export function QuestionEditor() {
                 className="flex-1 rounded-lg data-[state=active]:bg-white data-[state=active]:shadow-sm data-[state=active]:text-[#667eea] data-[state=active]:font-semibold transition-all"
               >
                 Essay Type
+              </TabsTrigger>
+              <TabsTrigger 
+                value="summarize" 
+                className="flex-1 rounded-lg data-[state=active]:bg-white data-[state=active]:shadow-sm data-[state=active]:text-[#667eea] data-[state=active]:font-semibold transition-all"
+              >
+                Summarize
               </TabsTrigger>
             </TabsList>
 
@@ -695,6 +731,131 @@ export function QuestionEditor() {
                 </div>
               </div>
             </TabsContent>
+
+            {/* Summarize Form */}
+            <TabsContent value="summarize" className="mt-6">
+              <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-6 lg:p-8">
+                <div className="mb-6 pb-4 border-b border-gray-200">
+                  <h3 className="text-2xl font-bold text-gray-900 mb-2">Add Summarize Exercise</h3>
+                  <p className="text-sm text-gray-600">Create a new summary exercise with title, question, and reading passage</p>
+                </div>
+                <div className="space-y-5">
+                  <div className="space-y-2">
+                    <Label htmlFor="summary-title">Title *</Label>
+                    <Input
+                      id="summary-title"
+                      placeholder="e.g., Chapter 1 Summary, Article Analysis, etc."
+                      value={summaryForm.title}
+                      onChange={(e) => setSummaryForm({ ...summaryForm, title: e.target.value })}
+                      className="rounded-xl border-gray-200"
+                    />
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="summary-question">Question (Optional)</Label>
+                    <Textarea
+                      id="summary-question"
+                      placeholder="Enter the question or prompt for this summary exercise..."
+                      value={summaryForm.question}
+                      onChange={(e) => setSummaryForm({ ...summaryForm, question: e.target.value })}
+                      className="rounded-xl border-gray-200 min-h-[120px] resize-none"
+                      rows={5}
+                    />
+                    <p className="text-xs text-gray-500">Provide a question or prompt that students should answer</p>
+                  </div>
+
+                  <div className="space-y-4">
+                    <div className="flex items-center justify-between">
+                      <Label>Reading Passages (Optional)</Label>
+                      <Button
+                        type="button"
+                        onClick={() => {
+                          setSummaryForm({
+                            ...summaryForm,
+                            paragraphs: [...summaryForm.paragraphs, '']
+                          });
+                        }}
+                        variant="outline"
+                        size="sm"
+                        className="rounded-lg"
+                      >
+                        <Plus className="w-4 h-4 mr-2" />
+                        Add Reading Passage
+                      </Button>
+                    </div>
+                    {summaryForm.paragraphs.map((paragraph, index) => (
+                      <div key={index} className="space-y-2">
+                        <div className="flex items-center justify-between">
+                          <Label htmlFor={`summary-paragraph-${index}`}>
+                            Reading Passage {index + 1}
+                          </Label>
+                          {summaryForm.paragraphs.length > 1 && (
+                            <Button
+                              type="button"
+                              onClick={() => {
+                                const newParagraphs = summaryForm.paragraphs.filter((_, i) => i !== index);
+                                setSummaryForm({ ...summaryForm, paragraphs: newParagraphs });
+                              }}
+                              variant="ghost"
+                              size="sm"
+                              className="text-red-600 hover:text-red-700 hover:bg-red-50"
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </Button>
+                          )}
+                        </div>
+                        <Textarea
+                          id={`summary-paragraph-${index}`}
+                          placeholder="Enter the reading passage, article, or paragraph that students should summarize..."
+                          value={paragraph}
+                          onChange={(e) => {
+                            const newParagraphs = [...summaryForm.paragraphs];
+                            newParagraphs[index] = e.target.value;
+                            setSummaryForm({ ...summaryForm, paragraphs: newParagraphs });
+                          }}
+                          className="rounded-xl border-gray-200 min-h-[200px] resize-none"
+                          rows={10}
+                        />
+                      </div>
+                    ))}
+                    <p className="text-xs text-gray-500">Provide one or more reading passages that students need to read and summarize</p>
+                  </div>
+
+
+                  <Button
+                    onClick={async () => {
+                      if (!summaryForm.title) {
+                        alert('Please enter a title');
+                        return;
+                      }
+                      try {
+                        const adminSecret = getAdminSecret();
+                        // Auto-create a single textarea input
+                        await summaryAPI.create({
+                          title: summaryForm.title,
+                          question: summaryForm.question,
+                          paragraphs: summaryForm.paragraphs.filter(p => p.trim() !== ''),
+                          textInputs: [{ label: 'Summary', placeholder: 'Enter your summary here...', required: true, inputType: 'paragraph' }],
+                        }, adminSecret);
+                        setSummaryForm({
+                          title: '',
+                          question: '',
+                          paragraphs: [''],
+                        });
+                        alert('Summary exercise created successfully');
+                        loadSummaries();
+                      } catch (err) {
+                        alert(err.message || 'Failed to create summary exercise');
+                      }
+                    }}
+                    className="w-full h-12 rounded-xl bg-gradient-to-r from-[#4facfe] to-[#00f2fe] hover:opacity-90 text-white gap-2 shadow-sm"
+                  >
+                    <Plus className="w-5 h-5" />
+                    Add Summarize Exercise
+                  </Button>
+                </div>
+              </div>
+            </TabsContent>
           </Tabs>
         </TabsContent>
 
@@ -725,6 +886,7 @@ export function QuestionEditor() {
                 <option value="all">All Questions</option>
                 <option value="mcq">MCQ Questions</option>
                 <option value="essay">Essay Questions</option>
+                <option value="summary">Summarize Exercises</option>
               </select>
             </div>
           </div>
@@ -734,7 +896,7 @@ export function QuestionEditor() {
               <div className="inline-block w-8 h-8 border-4 border-[#667eea] border-t-transparent rounded-full animate-spin mb-4"></div>
               <div className="text-xl text-gray-600">Loading questions...</div>
             </div>
-          ) : displayItems.items.length === 0 && questions.length === 0 && essays.length === 0 ? (
+          ) : displayItems.items.length === 0 && questions.length === 0 && essays.length === 0 && summaries.length === 0 ? (
             <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-12 text-center">
               <div className="inline-flex items-center justify-center w-16 h-16 bg-gray-100 rounded-full mb-4">
                 <Search className="w-8 h-8 text-gray-400" />
@@ -754,6 +916,7 @@ export function QuestionEditor() {
                 ) : (
                   displayItems.items.map((item) => {
                     const isEssay = item._type === 'essay' || displayItems.type === 'essay';
+                    const isSummary = item._type === 'summary' || displayItems.type === 'summary';
                     
                     return (
                       <div key={item.id} className="p-6 hover:bg-gray-50 transition-colors">
@@ -761,16 +924,27 @@ export function QuestionEditor() {
                           <div className="flex-1">
                             <div className="flex items-center gap-3 mb-3">
                               <button
-                                onClick={() => handleViewQuestion(item, isEssay ? 'essay' : 'mcq')}
+                                onClick={() => {
+                                  if (isSummary) {
+                                    setSelectedQuestion(item);
+                                    setSelectedQuestionType('summary');
+                                  } else {
+                                    handleViewQuestion(item, isEssay ? 'essay' : 'mcq');
+                                  }
+                                }}
                                 className={`inline-flex items-center px-3 py-1 rounded-lg cursor-pointer hover:opacity-80 transition-opacity ${
-                                  isEssay 
+                                  isSummary
+                                    ? 'bg-gradient-to-r from-[#4facfe]/20 to-[#00f2fe]/20 hover:from-[#4facfe]/30 hover:to-[#00f2fe]/30'
+                                    : isEssay 
                                     ? 'bg-gradient-to-r from-[#fa709a]/20 to-[#fee140]/20 hover:from-[#fa709a]/30 hover:to-[#fee140]/30'
                                     : 'bg-gradient-to-r from-[#667eea]/20 to-[#764ba2]/20 hover:from-[#667eea]/30 hover:to-[#764ba2]/30'
                                 }`}
                               >
                                 <Eye className="w-3 h-3 mr-1.5" />
                                 <span className={`text-sm font-semibold ${
-                                  isEssay
+                                  isSummary
+                                    ? 'bg-gradient-to-r from-[#4facfe] to-[#00f2fe] bg-clip-text text-transparent'
+                                    : isEssay
                                     ? 'bg-gradient-to-r from-[#fa709a] to-[#fee140] bg-clip-text text-transparent'
                                     : 'bg-gradient-to-r from-[#667eea] to-[#764ba2] bg-clip-text text-transparent'
                                 }`}>
@@ -784,6 +958,13 @@ export function QuestionEditor() {
                                   </span>
                                 </div>
                               )}
+                              {isSummary && (
+                                <div className="inline-flex items-center px-3 py-1 rounded-lg bg-gradient-to-r from-[#4facfe]/10 to-[#00f2fe]/10">
+                                  <span className="text-sm font-medium text-[#4facfe]">
+                                    Summarize
+                                  </span>
+                                </div>
+                              )}
                               {isEssay && (
                                 <div className="inline-flex items-center px-3 py-1 rounded-lg bg-gradient-to-r from-[#fa709a]/10 to-[#fee140]/10">
                                   <span className="text-sm font-medium text-[#fa709a]">
@@ -792,7 +973,16 @@ export function QuestionEditor() {
                                 </div>
                               )}
                             </div>
-                            <p className="text-gray-900 font-medium mb-3">{item.question}</p>
+                            {isSummary ? (
+                              <>
+                                <p className="text-gray-900 font-medium mb-3">{item.title}</p>
+                                <p className="text-sm text-gray-500 mb-2">
+                                  {item.textInputs?.length || 0} text input{item.textInputs?.length !== 1 ? 's' : ''}
+                                </p>
+                              </>
+                            ) : (
+                              <p className="text-gray-900 font-medium mb-3">{item.question}</p>
+                            )}
                             
                             {!isEssay && (
                               <>
@@ -847,7 +1037,7 @@ export function QuestionEditor() {
                           <Button
                             variant="ghost"
                             size="sm"
-                            onClick={() => handleDeleteQuestion(item.id, isEssay ? 'essay' : 'mcq')}
+                            onClick={() => handleDeleteQuestion(item.id, isSummary ? 'summary' : isEssay ? 'essay' : 'mcq')}
                             className="rounded-lg hover:bg-red-50 hover:text-red-600 flex-shrink-0"
                           >
                             <Trash2 className="w-4 h-4" />
@@ -862,12 +1052,12 @@ export function QuestionEditor() {
           )}
           
           {/* Questions Count */}
-          {!loading && (questions.length > 0 || essays.length > 0) && (
+          {!loading && (questions.length > 0 || essays.length > 0 || summaries.length > 0) && (
             <div className="text-center text-sm text-gray-500">
-              Showing {displayItems.items.length} of {questions.length + essays.length} question{(questions.length + essays.length) !== 1 ? 's' : ''}
+              Showing {displayItems.items.length} of {questions.length + essays.length + summaries.length} item{(questions.length + essays.length + summaries.length) !== 1 ? 's' : ''}
               {questionTypeFilter === 'all' && (
                 <span className="ml-2">
-                  ({questions.length} MCQ{questions.length !== 1 ? 's' : ''}, {essays.length} Essay{essays.length !== 1 ? 's' : ''})
+                  ({questions.length} MCQ{questions.length !== 1 ? 's' : ''}, {essays.length} Essay{essays.length !== 1 ? 's' : ''}, {summaries.length} Summar{summaries.length !== 1 ? 'ies' : 'y'})
                 </span>
               )}
             </div>
@@ -890,11 +1080,15 @@ export function QuestionEditor() {
                   <ArrowLeft className="w-5 h-5" />
                 </Button>
                 <DialogTitle className="text-2xl font-semibold text-gray-900">
-                  Question Details - {selectedQuestion.id}
+                  {selectedQuestionType === 'summary' ? 'Summary Details' : 'Question Details'} - {selectedQuestion.id}
                 </DialogTitle>
               </div>
               <DialogDescription className="text-gray-600">
-                {selectedQuestionType === 'essay' ? 'Essay Type Question' : 'MCQ Question'}
+                {selectedQuestionType === 'summary' 
+                  ? 'Summarize Exercise' 
+                  : selectedQuestionType === 'essay' 
+                  ? 'Essay Type Question' 
+                  : 'MCQ Question'}
               </DialogDescription>
             </DialogHeader>
 
@@ -982,6 +1176,72 @@ export function QuestionEditor() {
                         </div>
                       </div>
                     ))}
+                  </div>
+                </>
+              )}
+
+              {/* Summary Details */}
+              {selectedQuestionType === 'summary' && (
+                <>
+                  <div className="bg-white rounded-2xl p-6 border border-gray-200 space-y-6">
+                    <div>
+                      <h3 className="text-lg font-semibold text-gray-900 mb-2">{selectedQuestion.title}</h3>
+                    </div>
+                    
+                    {selectedQuestion.question && (
+                      <div className="bg-blue-50 rounded-xl p-5 border border-blue-200">
+                        <h4 className="text-sm font-semibold text-blue-700 mb-2 uppercase tracking-wide">Question</h4>
+                        <p className="text-base text-blue-900 leading-relaxed whitespace-pre-wrap">
+                          {selectedQuestion.question}
+                        </p>
+                      </div>
+                    )}
+
+                    {selectedQuestion.paragraphs && selectedQuestion.paragraphs.length > 0 && (
+                      <div className="space-y-4">
+                        {selectedQuestion.paragraphs.map((passage, index) => (
+                          <div key={index} className="bg-gray-50 rounded-xl p-5 border border-gray-200">
+                            <h4 className="text-sm font-semibold text-gray-700 mb-2 uppercase tracking-wide">
+                              Reading Passage {selectedQuestion.paragraphs.length > 1 ? index + 1 : ''}
+                            </h4>
+                            <p className="text-base text-gray-900 leading-relaxed whitespace-pre-wrap">
+                              {passage}
+                            </p>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                    {/* Fallback to old format */}
+                    {(!selectedQuestion.paragraphs || selectedQuestion.paragraphs.length === 0) && selectedQuestion.paragraph && (
+                      <div className="bg-gray-50 rounded-xl p-5 border border-gray-200">
+                        <h4 className="text-sm font-semibold text-gray-700 mb-2 uppercase tracking-wide">Reading Passage</h4>
+                        <p className="text-base text-gray-900 leading-relaxed whitespace-pre-wrap">
+                          {selectedQuestion.paragraph}
+                        </p>
+                      </div>
+                    )}
+
+                    <div>
+                      <h4 className="text-sm font-semibold text-gray-700 mb-3 uppercase tracking-wide">Textarea Inputs</h4>
+                      {selectedQuestion.textInputs?.map((input, index) => (
+                        <div key={input.id || index} className="mb-4 p-4 bg-gray-50 rounded-xl border border-gray-200">
+                          <div className="flex items-center gap-2 mb-2">
+                            <span className="text-sm font-medium text-gray-900">{input.label}</span>
+                            {input.required && (
+                              <span className="px-2 py-0.5 bg-red-100 text-red-600 text-xs font-medium rounded">
+                                Required
+                              </span>
+                            )}
+                            <span className="px-2 py-0.5 bg-blue-100 text-blue-600 text-xs font-medium rounded">
+                              Textarea
+                            </span>
+                          </div>
+                          {input.placeholder && (
+                            <p className="text-sm text-gray-500 italic">Placeholder: {input.placeholder}</p>
+                          )}
+                        </div>
+                      ))}
+                    </div>
                   </div>
                 </>
               )}
