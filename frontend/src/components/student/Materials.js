@@ -1,10 +1,15 @@
 import { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { materialAPI } from '../../services/api';
 import { BACKEND_URL } from '../../config/api';
 import { Button } from '../ui/button';
-import { FileText, Download, Eye, Search, Loader } from 'lucide-react';
+import { Input } from '../ui/input';
+import { FileText, Download, Eye, Search, Loader, ArrowLeft } from 'lucide-react';
+import { useLanguage } from '../../context/LanguageContext';
 
 export function Materials() {
+  const navigate = useNavigate();
+  const { language } = useLanguage();
   const [materials, setMaterials] = useState([]);
   const [filteredMaterials, setFilteredMaterials] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -70,104 +75,139 @@ export function Materials() {
 
   if (loading) {
     return (
-      <div className="p-6 lg:p-8">
-        <div className="text-center py-12">
-          <Loader className="w-8 h-8 animate-spin mx-auto text-[#667eea] mb-4" />
-          <div className="text-xl text-gray-600">Loading materials...</div>
+      <div className="min-h-screen bg-white flex items-center justify-center">
+        <div className="text-center">
+          <Loader className="w-10 h-10 animate-spin text-gray-700 mx-auto mb-4" />
+          <div className="text-xl font-semibold text-gray-700">{language === 'si' ? 'ද්‍රව්‍ය පූරණය වෙමින්...' : 'Loading materials...'}</div>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="p-6 lg:p-8">
+    <div className="min-h-screen bg-gray-50">
       {/* Header */}
-      <div className="mb-8">
-        <h1 className="text-3xl font-semibold text-gray-900 mb-2">Study Materials</h1>
-        <p className="text-gray-600">Access and download study materials</p>
-      </div>
-
-      {/* Search and Filter */}
-      <div className="mb-6 flex flex-col md:flex-row gap-4">
-        <div className="flex-1 relative">
-          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
-          <input
-            type="text"
-            placeholder="Search materials..."
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            className="w-full pl-10 pr-4 py-3 rounded-lg border border-gray-300 focus:border-[#667eea] focus:ring-2 focus:ring-[#667eea]/30 focus:outline-none"
-          />
-        </div>
-        <select
-          value={selectedCategory}
-          onChange={(e) => setSelectedCategory(e.target.value)}
-          className="px-4 py-3 rounded-lg border border-gray-300 focus:border-[#667eea] focus:ring-2 focus:ring-[#667eea]/30 focus:outline-none bg-white"
-        >
-          {categories.map(cat => (
-            <option key={cat} value={cat}>{cat}</option>
-          ))}
-        </select>
-      </div>
-
-      {/* Materials Grid */}
-      {filteredMaterials.length === 0 ? (
-        <div className="text-center py-12 bg-white rounded-2xl shadow-sm border border-gray-200">
-          <FileText className="w-16 h-16 text-gray-300 mx-auto mb-4" />
-          <p className="text-gray-500 text-lg">
-            {materials.length === 0 ? 'No materials available yet' : 'No materials match your search'}
-          </p>
-        </div>
-      ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {filteredMaterials.map((material) => (
-            <div
-              key={material.id}
-              className="bg-white rounded-2xl shadow-sm border border-gray-200 p-6 hover:shadow-md transition-shadow"
-            >
-              <div className="flex items-start gap-3 mb-4">
-                <div className="w-12 h-12 bg-red-100 rounded-xl flex items-center justify-center flex-shrink-0">
-                  <FileText className="w-6 h-6 text-red-600" />
-                </div>
-                <div className="flex-1 min-w-0">
-                  <h3 className="font-semibold text-gray-900 line-clamp-2 mb-1">{material.title}</h3>
-                  <p className="text-xs text-gray-500">{material.category}</p>
-                </div>
-              </div>
-
-              {material.description && (
-                <p className="text-sm text-gray-600 mb-4 line-clamp-3">{material.description}</p>
-              )}
-
-              <div className="flex items-center justify-between text-xs text-gray-500 mb-4">
-                <span>{formatFileSize(material.fileSize)}</span>
-                <span>{formatDate(material.uploadedAt)}</span>
-              </div>
-
-              <div className="flex gap-2">
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => window.open(`${BACKEND_URL}${material.filePath}`, '_blank')}
-                  className="flex-1 rounded-lg"
-                >
-                  <Eye className="w-4 h-4 mr-2" />
-                  View
-                </Button>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => materialAPI.download(material.id)}
-                  className="flex-1 rounded-lg"
-                >
-                  <Download className="w-4 h-4 mr-2" />
-                  Download
-                </Button>
-              </div>
+      <div className="bg-gray-50 border-b border-gray-200 px-4 sm:px-6 lg:px-8 py-10">
+        <div className="max-w-7xl mx-auto flex items-center justify-between">
+          <div className="flex items-center gap-6">
+            <div className="p-4 bg-gray-50 rounded-xl border border-gray-200">
+              <FileText className="w-8 h-8 text-gray-700" />
             </div>
-          ))}
+            <div>
+              <h1 className="text-4xl font-bold mb-2 tracking-tight text-gray-900">{language === 'si' ? 'අධ්‍යයන ද්‍රව්‍ය' : 'Study Materials'}</h1>
+              <p className="text-gray-600 font-normal text-base">{language === 'si' ? 'PDF, සටහන් සහ අධ්‍යයන සම්පත් ප්‍රවේශ වන්න' : 'Access and download study materials'}</p>
+            </div>
+          </div>
+          <Button
+            variant="ghost"
+            onClick={() => navigate('/student/dashboard')}
+            className="gap-2 rounded-lg text-gray-700 hover:bg-gray-100 font-medium"
+          >
+            <ArrowLeft className="w-5 h-5" />
+            {language === 'si' ? 'උපුටා දැක්වීම' : 'Back to Dashboard'}
+          </Button>
         </div>
-      )}
+      </div>
+
+      {/* Content */}
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
+        {/* Search and Filter */}
+        <div className="mb-8 flex flex-col sm:flex-row gap-4">
+          <div className="relative flex-1">
+            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
+            <Input
+              type="text"
+              placeholder={language === 'si' ? 'ද්‍රව්‍ය සොයන්න...' : 'Search materials...'}
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="pl-10 h-11 rounded-lg border-gray-200 bg-white focus:border-gray-400 focus:ring-1 focus:ring-gray-400 focus:ring-offset-0"
+            />
+          </div>
+          <select
+            value={selectedCategory}
+            onChange={(e) => setSelectedCategory(e.target.value)}
+            className="px-4 py-2.5 h-11 rounded-lg border border-gray-200 focus:border-gray-400 focus:ring-1 focus:ring-gray-400 focus:outline-none bg-white"
+          >
+            {categories.map(cat => (
+              <option key={cat} value={cat}>{cat}</option>
+            ))}
+          </select>
+        </div>
+
+        {/* Materials Grid */}
+        {filteredMaterials.length === 0 ? (
+          <div className="text-center py-24">
+            <div className="inline-flex items-center justify-center w-20 h-20 bg-gray-50 rounded-xl mb-6 border border-gray-200">
+              <FileText className="w-10 h-10 text-gray-400" />
+            </div>
+            <h3 className="text-2xl font-bold text-gray-900 mb-2">{language === 'si' ? 'ද්‍රව්‍ය නොමැත' : 'No Materials Available'}</h3>
+            <p className="text-gray-600 font-normal text-base">
+              {materials.length === 0 
+                ? (language === 'si' ? 'ද්‍රව්‍ය තවමත් නොමැත' : 'No materials available yet')
+                : (language === 'si' ? 'ඔබේ සෙවීමට ගැලපෙන ද්‍රව්‍ය නොමැත' : 'No materials match your search')}
+            </p>
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {filteredMaterials.map((material, index) => {
+              const colors = [
+                { bg: 'bg-green-50', border: 'border-green-100', iconBg: 'bg-green-100', iconBorder: 'border-green-200', iconText: 'text-green-700' },
+                { bg: 'bg-emerald-50', border: 'border-emerald-100', iconBg: 'bg-emerald-100', iconBorder: 'border-emerald-200', iconText: 'text-emerald-700' },
+                { bg: 'bg-teal-50', border: 'border-teal-100', iconBg: 'bg-teal-100', iconBorder: 'border-teal-200', iconText: 'text-teal-700' },
+              ];
+              const color = colors[index % colors.length];
+              return (
+              <div
+                key={material.id}
+                className={`${color.bg} rounded-2xl shadow-sm border ${color.border} p-6 hover:shadow-md hover:${color.border.replace('100', '200')} transition-all duration-200`}
+              >
+                <div className="flex items-start gap-3 mb-4">
+                  <div className={`p-3 ${color.iconBg} rounded-lg border ${color.iconBorder}`}>
+                    <FileText className={`w-6 h-6 ${color.iconText}`} />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <h3 className="font-bold text-gray-900 line-clamp-2 mb-1">{material.title}</h3>
+                    {material.category && (
+                      <p className="text-xs text-gray-500 font-normal">{material.category}</p>
+                    )}
+                  </div>
+                </div>
+
+                {material.description && (
+                  <p className="text-sm text-gray-600 mb-4 line-clamp-3 font-normal">{material.description}</p>
+                )}
+
+                <div className="flex items-center justify-between text-xs text-gray-500 mb-4 font-normal">
+                  <span>{formatFileSize(material.fileSize)}</span>
+                  <span>{formatDate(material.uploadedAt)}</span>
+                </div>
+
+                <div className="flex gap-2">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => window.open(`${BACKEND_URL}${material.filePath}`, '_blank')}
+                    className="flex-1 rounded-lg border-gray-200 hover:bg-gray-50 font-medium"
+                  >
+                    <Eye className="w-4 h-4 mr-2" />
+                    {language === 'si' ? 'බලන්න' : 'View'}
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => materialAPI.download(material.id)}
+                    className="flex-1 rounded-lg border-gray-200 hover:bg-gray-50 font-medium"
+                  >
+                    <Download className="w-4 h-4 mr-2" />
+                    {language === 'si' ? 'බාගත' : 'Download'}
+                  </Button>
+                </div>
+              </div>
+              );
+            })}
+          </div>
+        )}
+      </div>
     </div>
   );
 }

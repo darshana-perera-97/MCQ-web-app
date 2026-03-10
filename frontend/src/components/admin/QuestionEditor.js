@@ -6,7 +6,7 @@ import { Input } from '../ui/input';
 import { Label } from '../ui/label';
 import { Textarea } from '../ui/textarea';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '../ui/tabs';
-import { Plus, Trash2, Search, Image as ImageIcon, X, Upload, FileText, Eye, ArrowLeft } from 'lucide-react';
+import { Plus, Trash2, Search, Image as ImageIcon, X, Upload, FileText, Eye, ArrowLeft, CheckSquare, Square } from 'lucide-react';
 import {
   Dialog,
   DialogContent,
@@ -27,6 +27,7 @@ export function QuestionEditor() {
   const [csvUploadResult, setCsvUploadResult] = useState(null);
   const [selectedQuestion, setSelectedQuestion] = useState(null);
   const [selectedQuestionType, setSelectedQuestionType] = useState(null); // 'mcq', 'essay', or 'summary'
+  const [selectedItems, setSelectedItems] = useState([]); // Array of { id, type } objects
 
   // Generate auto ID for MCQ
   const generateAutoId = () => {
@@ -309,6 +310,8 @@ export function QuestionEditor() {
         await mcqAPI.delete(id, adminSecret);
         await loadQuestions();
       }
+      // Remove from selected items if it was selected
+      setSelectedItems(prev => prev.filter(item => !(item.id === id && item.type === type)));
       // Close view if the deleted item was being viewed
       if (selectedQuestion && selectedQuestion.id === id) {
         handleCloseQuestionView();
@@ -316,6 +319,97 @@ export function QuestionEditor() {
     } catch (err) {
       alert(err.message || 'Failed to delete item');
     }
+  };
+
+  const handleBulkDelete = async () => {
+    if (selectedItems.length === 0) {
+      alert('Please select at least one item to delete');
+      return;
+    }
+    
+    if (!window.confirm(`Are you sure you want to delete ${selectedItems.length} item(s)?`)) return;
+    
+    try {
+      const adminSecret = getAdminSecret();
+      let successCount = 0;
+      let failCount = 0;
+      
+      for (const item of selectedItems) {
+        try {
+          if (item.type === 'essay') {
+            await essayAPI.delete(item.id, adminSecret);
+          } else if (item.type === 'summary') {
+            await summaryAPI.delete(item.id, adminSecret);
+          } else {
+            await mcqAPI.delete(item.id, adminSecret);
+          }
+          successCount++;
+        } catch (err) {
+          console.error(`Failed to delete ${item.id}:`, err);
+          failCount++;
+        }
+      }
+      
+      // Reload all data
+      await loadQuestions();
+      await loadEssays();
+      await loadSummaries();
+      
+      // Clear selections
+      setSelectedItems([]);
+      
+      // Close view if any deleted item was being viewed
+      if (selectedQuestion && selectedItems.some(item => item.id === selectedQuestion.id)) {
+        handleCloseQuestionView();
+      }
+      
+      if (failCount === 0) {
+        alert(`Successfully deleted ${successCount} item(s)`);
+      } else {
+        alert(`Deleted ${successCount} item(s), ${failCount} failed`);
+      }
+    } catch (err) {
+      alert(err.message || 'Failed to delete items');
+    }
+  };
+
+  const handleToggleSelect = (id, type) => {
+    setSelectedItems(prev => {
+      const exists = prev.some(item => item.id === id && item.type === type);
+      if (exists) {
+        return prev.filter(item => !(item.id === id && item.type === type));
+      } else {
+        return [...prev, { id, type }];
+      }
+    });
+  };
+
+  const handleSelectAll = () => {
+    const allItems = displayItems.items.map(item => ({
+      id: item.id,
+      type: item._type || displayItems.type || (item.question ? 'essay' : 'summary')
+    }));
+    
+    if (selectedItems.length === allItems.length && 
+        allItems.every(item => selectedItems.some(sel => sel.id === item.id && sel.type === item.type))) {
+      // Deselect all
+      setSelectedItems([]);
+    } else {
+      // Select all
+      setSelectedItems(allItems);
+    }
+  };
+
+  const isItemSelected = (id, type) => {
+    return selectedItems.some(item => item.id === id && item.type === type);
+  };
+
+  const isAllSelected = () => {
+    if (displayItems.items.length === 0) return false;
+    return displayItems.items.every(item => {
+      const type = item._type || displayItems.type || (item.question ? 'essay' : 'summary');
+      return isItemSelected(item.id, type);
+    });
   };
 
   return (
@@ -863,8 +957,27 @@ export function QuestionEditor() {
         <TabsContent value="manage" className="space-y-6 mt-6">
           {/* Header */}
           <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-6">
-            <h3 className="text-2xl font-bold text-gray-900 mb-4">Manage Questions</h3>
-            <p className="text-sm text-gray-600 mb-4">Search, view, and delete existing questions</p>
+            <div className="flex items-center justify-between mb-4">
+              <div>
+                <h3 className="text-2xl font-bold text-gray-900 mb-2">Manage Questions</h3>
+                <p className="text-sm text-gray-600">Search, view, and delete existing questions</p>
+              </div>
+              {selectedItems.length > 0 && (
+                <div className="flex items-center gap-3">
+                  <span className="text-sm font-medium text-gray-700">
+                    {selectedItems.length} selected
+                  </span>
+                  <Button
+                    onClick={handleBulkDelete}
+                    variant="destructive"
+                    className="rounded-lg h-10 px-4 gap-2"
+                  >
+                    <Trash2 className="w-4 h-4" />
+                    Delete Selected
+                  </Button>
+                </div>
+              )}
+            </div>
             
             {/* Search and Filter */}
             <div className="flex flex-col sm:flex-row gap-4">
@@ -880,7 +993,10 @@ export function QuestionEditor() {
               </div>
               <select
                 value={questionTypeFilter}
-                onChange={(e) => setQuestionTypeFilter(e.target.value)}
+                onChange={(e) => {
+                  setQuestionTypeFilter(e.target.value);
+                  setSelectedItems([]); // Clear selections when filter changes
+                }}
                 className="px-4 py-3 h-12 rounded-xl border border-gray-300 focus:border-[#667eea] focus:ring-2 focus:ring-[#667eea]/30 focus:outline-none bg-white"
               >
                 <option value="all">All Questions</option>
@@ -907,6 +1023,21 @@ export function QuestionEditor() {
           ) : (
             /* Questions List */
             <div className="bg-white rounded-2xl shadow-sm border border-gray-200 overflow-hidden">
+              {displayItems.items.length > 0 && (
+                <div className="p-4 border-b border-gray-200 bg-gray-50">
+                  <button
+                    onClick={handleSelectAll}
+                    className="flex items-center gap-2 text-sm font-medium text-gray-700 hover:text-gray-900 transition-colors"
+                  >
+                    {isAllSelected() ? (
+                      <CheckSquare className="w-5 h-5 text-blue-600" />
+                    ) : (
+                      <Square className="w-5 h-5 text-gray-400" />
+                    )}
+                    <span>Select All ({displayItems.items.length})</span>
+                  </button>
+                </div>
+              )}
               <div className="divide-y divide-gray-100">
                 {displayItems.items.length === 0 ? (
                   <div className="p-6 text-center">
@@ -917,11 +1048,24 @@ export function QuestionEditor() {
                   displayItems.items.map((item) => {
                     const isEssay = item._type === 'essay' || displayItems.type === 'essay';
                     const isSummary = item._type === 'summary' || displayItems.type === 'summary';
+                    const itemType = isSummary ? 'summary' : isEssay ? 'essay' : 'mcq';
+                    const isSelected = isItemSelected(item.id, itemType);
                     
                     return (
-                      <div key={item.id} className="p-6 hover:bg-gray-50 transition-colors">
+                      <div key={item.id} className={`p-6 hover:bg-gray-50 transition-colors ${isSelected ? 'bg-blue-50' : ''}`}>
                         <div className="flex items-start justify-between gap-4">
-                          <div className="flex-1">
+                          <div className="flex items-start gap-3 flex-1">
+                            <button
+                              onClick={() => handleToggleSelect(item.id, itemType)}
+                              className="mt-1 flex-shrink-0"
+                            >
+                              {isSelected ? (
+                                <CheckSquare className="w-5 h-5 text-blue-600" />
+                              ) : (
+                                <Square className="w-5 h-5 text-gray-400 hover:text-gray-600" />
+                              )}
+                            </button>
+                            <div className="flex-1">
                             <div className="flex items-center gap-3 mb-3">
                               <button
                                 onClick={() => {
@@ -1033,11 +1177,12 @@ export function QuestionEditor() {
                                 <p className="text-sm text-green-900 whitespace-pre-wrap">{item.answer}</p>
                               </div>
                             )}
+                            </div>
                           </div>
                           <Button
                             variant="ghost"
                             size="sm"
-                            onClick={() => handleDeleteQuestion(item.id, isSummary ? 'summary' : isEssay ? 'essay' : 'mcq')}
+                            onClick={() => handleDeleteQuestion(item.id, itemType)}
                             className="rounded-lg hover:bg-red-50 hover:text-red-600 flex-shrink-0"
                           >
                             <Trash2 className="w-4 h-4" />

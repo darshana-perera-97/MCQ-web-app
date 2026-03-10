@@ -18,6 +18,7 @@ import { Settings } from './components/admin/Settings';
 import { Materials as AdminMaterials } from './components/admin/Materials';
 import { Materials as StudentMaterials } from './components/student/Materials';
 import { Summarize } from './components/student/Summarize';
+import { Essays } from './components/student/Essays';
 
 function App() {
   return (
@@ -32,6 +33,7 @@ function App() {
           <Route path="/admin/login" element={<AdminLogin />} />
           <Route path="/student/dashboard" element={<Dashboard />} />
           <Route path="/student/materials" element={<StudentMaterials />} />
+          <Route path="/student/essays" element={<Essays />} />
           <Route path="/student/summarize" element={<Summarize />} />
           <Route path="/quiz" element={<QuizInterface />} />
           <Route path="/admin" element={<AdminLayout />}>

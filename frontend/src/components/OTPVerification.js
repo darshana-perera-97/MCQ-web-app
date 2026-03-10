@@ -107,34 +107,34 @@ export function OTPVerification({ email, name, onVerified, onCancel }) {
   if (verified) {
     return (
       <div className="text-center py-8">
-        <div className="inline-flex items-center justify-center w-16 h-16 bg-green-100 rounded-full mb-4">
+        <div className="inline-flex items-center justify-center w-16 h-16 bg-gray-50 rounded-xl mb-5 border border-gray-100">
           <CheckCircle className="w-8 h-8 text-green-600" />
         </div>
-        <h2 className="text-2xl font-semibold text-gray-900 mb-2">Email Verified!</h2>
-        <p className="text-gray-600">Your email has been successfully verified.</p>
+        <h2 className="text-2xl font-bold text-gray-900 mb-2">Email Verified!</h2>
+        <p className="text-gray-600 font-normal">Your email has been successfully verified.</p>
       </div>
     );
   }
 
   return (
     <div className="w-full max-w-md mx-auto">
-      <div className="text-center mb-8">
-        <div className="inline-flex items-center justify-center w-14 h-14 bg-gradient-to-br from-[#667eea] to-[#764ba2] rounded-xl mb-4">
-          <Mail className="w-7 h-7 text-white" />
+      <div className="text-center mb-10">
+        <div className="inline-flex items-center justify-center w-14 h-14 bg-gray-50 rounded-xl mb-6 border border-gray-100">
+          <Mail className="w-7 h-7 text-gray-700" />
         </div>
-        <h2 className="text-2xl font-semibold text-gray-900 mb-2">Verify Your Email</h2>
-        <p className="text-sm text-gray-500">
+        <h2 className="text-2xl font-bold text-gray-900 mb-2 tracking-tight">Verify Your Email</h2>
+        <p className="text-sm text-gray-500 font-normal">
           We've sent a 6-digit verification code to
         </p>
-        <p className="text-sm font-medium text-gray-900 mt-1">{email}</p>
+        <p className="text-sm font-medium text-gray-900 mt-2">{email}</p>
       </div>
 
       <form onSubmit={handleVerify} className="space-y-6">
         <div>
-          <Label className="text-sm font-medium text-gray-700 mb-3 block text-center">
+          <Label className="text-sm font-medium text-gray-700 mb-4 block text-center">
             Enter Verification Code
           </Label>
-          <div className="flex gap-2 justify-center">
+          <div className="flex gap-3 justify-center">
             {otp.map((digit, index) => (
               <Input
                 key={index}
@@ -146,7 +146,7 @@ export function OTPVerification({ email, name, onVerified, onCancel }) {
                 onChange={(e) => handleOtpChange(index, e.target.value)}
                 onKeyDown={(e) => handleKeyDown(index, e)}
                 onPaste={index === 0 ? handlePaste : undefined}
-                className="w-12 h-14 text-center text-2xl font-semibold rounded-lg border-gray-300 focus:border-[#667eea] focus:ring-2 focus:ring-[#667eea]/30 focus:ring-offset-0"
+                className="w-12 h-14 text-center text-2xl font-bold rounded-lg border-gray-200 bg-white focus:border-gray-400 focus:ring-1 focus:ring-gray-400 focus:ring-offset-0 transition-all"
                 autoFocus={index === 0}
               />
             ))}
@@ -154,8 +154,8 @@ export function OTPVerification({ email, name, onVerified, onCancel }) {
         </div>
 
         {error && (
-          <div className="p-3 bg-red-50 border border-red-200 rounded-lg text-red-700 text-sm flex items-center gap-2">
-            <XCircle className="w-4 h-4" />
+          <div className="p-3 bg-red-50 border border-red-200 rounded-lg text-red-700 text-sm font-medium flex items-center gap-2">
+            <XCircle className="w-4 h-4 flex-shrink-0" />
             {error}
           </div>
         )}
@@ -163,13 +163,21 @@ export function OTPVerification({ email, name, onVerified, onCancel }) {
         <Button
           type="submit"
           disabled={loading || otp.join('').length !== 6}
-          className="w-full h-11 rounded-lg bg-gradient-to-r from-[#667eea] to-[#764ba2] hover:opacity-90 text-white font-medium disabled:opacity-50 disabled:cursor-not-allowed transition-all shadow-sm"
+          className="w-full h-11 rounded-lg bg-blue-600 hover:bg-blue-700 text-white font-medium disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200 shadow-sm"
         >
-          {loading ? 'Verifying...' : 'Verify Email'}
+          {loading ? (
+            <span className="flex items-center justify-center gap-2">
+              <svg className="animate-spin h-4 w-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+              </svg>
+              Verifying...
+            </span>
+          ) : 'Verify Email'}
         </Button>
 
         <div className="text-center space-y-3">
-          <p className="text-sm text-gray-600">
+          <p className="text-sm text-gray-600 font-normal">
             Didn't receive the code?
           </p>
           <Button
@@ -177,7 +185,7 @@ export function OTPVerification({ email, name, onVerified, onCancel }) {
             variant="outline"
             onClick={handleResend}
             disabled={resending || countdown > 0}
-            className="rounded-lg h-10 px-4 text-sm"
+            className="rounded-lg h-10 px-6 text-sm font-normal border-gray-200 hover:bg-indigo-50 hover:border-indigo-300 hover:text-indigo-700 transition-all"
           >
             {resending ? (
               <>
@@ -200,7 +208,7 @@ export function OTPVerification({ email, name, onVerified, onCancel }) {
             <button
               type="button"
               onClick={onCancel}
-              className="text-sm text-gray-600 hover:text-gray-900 transition-colors"
+              className="text-sm text-gray-600 hover:text-blue-600 transition-colors font-normal"
             >
               Cancel
             </button>

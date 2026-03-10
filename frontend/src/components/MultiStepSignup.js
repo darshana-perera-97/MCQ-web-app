@@ -132,9 +132,9 @@ export function MultiStepSignup({ onSubmit, loading, error }) {
                   <div
                     className={`w-10 h-10 rounded-full flex items-center justify-center transition-all flex-shrink-0 ${
                       isCompleted
-                        ? 'bg-gradient-to-r from-[#667eea] to-[#764ba2] text-white'
+                        ? 'bg-gradient-to-r from-blue-600 to-indigo-600 text-white'
                         : isActive
-                        ? 'bg-gradient-to-r from-[#667eea] to-[#764ba2] text-white ring-4 ring-[#667eea]/20'
+                        ? 'bg-gradient-to-r from-blue-600 to-indigo-600 text-white ring-4 ring-blue-200'
                         : 'bg-gray-200 text-gray-500'
                     }`}
                   >
@@ -152,7 +152,7 @@ export function MultiStepSignup({ onSubmit, loading, error }) {
                 </div>
                 {index < steps.length - 1 && (
                   <div className={`flex-1 h-0.5 mx-2 mt-5 ${
-                    isCompleted ? 'bg-gradient-to-r from-[#667eea] to-[#764ba2]' : 'bg-gray-200'
+                    isCompleted ? 'bg-gradient-to-r from-blue-600 to-indigo-600' : 'bg-gray-200'
                   }`} />
                 )}
               </div>
@@ -161,7 +161,7 @@ export function MultiStepSignup({ onSubmit, loading, error }) {
         </div>
         <div className="w-full h-2 bg-gray-200 rounded-full overflow-hidden">
           <div
-            className="h-full bg-gradient-to-r from-[#667eea] to-[#764ba2] transition-all duration-300"
+            className="h-full bg-gradient-to-r from-blue-600 to-indigo-600 transition-all duration-300"
             style={{ width: `${getStepProgress()}%` }}
           />
         </div>
@@ -195,7 +195,7 @@ export function MultiStepSignup({ onSubmit, loading, error }) {
                   placeholder="Enter your full name"
                   value={formData.name}
                   onChange={(e) => handleChange('name', e.target.value)}
-                  className={`rounded-lg border-gray-300 focus:border-[#667eea] focus:ring-2 focus:ring-[#667eea]/30 focus:ring-offset-0 h-11 ${
+                  className={`rounded-lg border-gray-300 focus:border-blue-500 focus:ring-2 focus:ring-blue-200 focus:ring-offset-0 h-11 ${
                     errors.name ? 'border-red-300' : ''
                   }`}
                 />
@@ -212,7 +212,7 @@ export function MultiStepSignup({ onSubmit, loading, error }) {
                   placeholder="Enter your email"
                   value={formData.email}
                   onChange={(e) => handleChange('email', e.target.value)}
-                  className={`rounded-lg border-gray-300 focus:border-[#667eea] focus:ring-2 focus:ring-[#667eea]/30 focus:ring-offset-0 h-11 ${
+                  className={`rounded-lg border-gray-300 focus:border-blue-500 focus:ring-2 focus:ring-blue-200 focus:ring-offset-0 h-11 ${
                     errors.email ? 'border-red-300' : ''
                   }`}
                 />
@@ -230,7 +230,7 @@ export function MultiStepSignup({ onSubmit, loading, error }) {
                     placeholder="Create a password"
                     value={formData.password}
                     onChange={(e) => handleChange('password', e.target.value)}
-                    className={`rounded-lg border-gray-300 focus:border-[#667eea] focus:ring-2 focus:ring-[#667eea]/30 focus:ring-offset-0 h-11 ${
+                    className={`rounded-lg border-gray-300 focus:border-blue-500 focus:ring-2 focus:ring-blue-200 focus:ring-offset-0 h-11 ${
                       errors.password ? 'border-red-300' : ''
                     }`}
                   />
@@ -247,7 +247,7 @@ export function MultiStepSignup({ onSubmit, loading, error }) {
                     placeholder="Confirm your password"
                     value={formData.confirmPassword}
                     onChange={(e) => handleChange('confirmPassword', e.target.value)}
-                    className={`rounded-lg border-gray-300 focus:border-[#667eea] focus:ring-2 focus:ring-[#667eea]/30 focus:ring-offset-0 h-11 ${
+                    className={`rounded-lg border-gray-300 focus:border-blue-500 focus:ring-2 focus:ring-blue-200 focus:ring-offset-0 h-11 ${
                       errors.confirmPassword ? 'border-red-300' : ''
                     }`}
                   />
@@ -278,7 +278,7 @@ export function MultiStepSignup({ onSubmit, loading, error }) {
                     placeholder="+1 234 567 8900"
                     value={formData.phone}
                     onChange={(e) => handleChange('phone', e.target.value)}
-                    className={`rounded-lg border-gray-300 focus:border-[#667eea] focus:ring-2 focus:ring-[#667eea]/30 focus:ring-offset-0 h-11 ${
+                    className={`rounded-lg border-gray-300 focus:border-blue-500 focus:ring-2 focus:ring-blue-200 focus:ring-offset-0 h-11 ${
                       errors.phone ? 'border-red-300' : ''
                     }`}
                   />
@@ -295,7 +295,7 @@ export function MultiStepSignup({ onSubmit, loading, error }) {
                     placeholder="+1 234 567 8900"
                     value={formData.alternatePhone}
                     onChange={(e) => handleChange('alternatePhone', e.target.value)}
-                    className="rounded-lg border-gray-300 focus:border-[#667eea] focus:ring-2 focus:ring-[#667eea]/30 focus:ring-offset-0 h-11"
+                    className="rounded-lg border-gray-300 focus:border-blue-500 focus:ring-2 focus:ring-blue-200 focus:ring-offset-0 h-11"
                   />
                 </div>
               </div>
@@ -310,7 +310,7 @@ export function MultiStepSignup({ onSubmit, loading, error }) {
                   value={formData.address}
                   onChange={(e) => handleChange('address', e.target.value)}
                   rows={2}
-                  className={`rounded-lg border-gray-300 focus:border-[#667eea] focus:ring-2 focus:ring-[#667eea]/30 focus:ring-offset-0 ${
+                  className={`rounded-lg border-gray-300 focus:border-blue-500 focus:ring-2 focus:ring-blue-200 focus:ring-offset-0 ${
                     errors.address ? 'border-red-300' : ''
                   }`}
                 />
@@ -328,7 +328,7 @@ export function MultiStepSignup({ onSubmit, loading, error }) {
                     placeholder="City"
                     value={formData.city}
                     onChange={(e) => handleChange('city', e.target.value)}
-                    className={`rounded-lg border-gray-300 focus:border-[#667eea] focus:ring-2 focus:ring-[#667eea]/30 focus:ring-offset-0 h-11 ${
+                    className={`rounded-lg border-gray-300 focus:border-blue-500 focus:ring-2 focus:ring-blue-200 focus:ring-offset-0 h-11 ${
                       errors.city ? 'border-red-300' : ''
                     }`}
                   />
@@ -345,7 +345,7 @@ export function MultiStepSignup({ onSubmit, loading, error }) {
                     placeholder="State"
                     value={formData.state}
                     onChange={(e) => handleChange('state', e.target.value)}
-                    className={`rounded-lg border-gray-300 focus:border-[#667eea] focus:ring-2 focus:ring-[#667eea]/30 focus:ring-offset-0 h-11 ${
+                    className={`rounded-lg border-gray-300 focus:border-blue-500 focus:ring-2 focus:ring-blue-200 focus:ring-offset-0 h-11 ${
                       errors.state ? 'border-red-300' : ''
                     }`}
                   />
@@ -362,7 +362,7 @@ export function MultiStepSignup({ onSubmit, loading, error }) {
                     placeholder="12345"
                     value={formData.zipCode}
                     onChange={(e) => handleChange('zipCode', e.target.value)}
-                    className={`rounded-lg border-gray-300 focus:border-[#667eea] focus:ring-2 focus:ring-[#667eea]/30 focus:ring-offset-0 h-11 ${
+                    className={`rounded-lg border-gray-300 focus:border-blue-500 focus:ring-2 focus:ring-blue-200 focus:ring-offset-0 h-11 ${
                       errors.zipCode ? 'border-red-300' : ''
                     }`}
                   />
@@ -391,7 +391,7 @@ export function MultiStepSignup({ onSubmit, loading, error }) {
                     id="highestEducation"
                     value={formData.highestEducation}
                     onChange={(e) => handleChange('highestEducation', e.target.value)}
-                    className={`w-full h-11 rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm focus:border-[#667eea] focus:outline-none focus:ring-2 focus:ring-[#667eea]/30 focus:ring-offset-0 transition-all ${
+                    className={`w-full h-11 rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-200 focus:ring-offset-0 transition-all ${
                       errors.highestEducation ? 'border-red-300' : ''
                     }`}
                   >
@@ -416,7 +416,7 @@ export function MultiStepSignup({ onSubmit, loading, error }) {
                     placeholder="Enter institution name"
                     value={formData.institution}
                     onChange={(e) => handleChange('institution', e.target.value)}
-                    className={`rounded-lg border-gray-300 focus:border-[#667eea] focus:ring-2 focus:ring-[#667eea]/30 focus:ring-offset-0 h-11 ${
+                    className={`rounded-lg border-gray-300 focus:border-blue-500 focus:ring-2 focus:ring-blue-200 focus:ring-offset-0 h-11 ${
                       errors.institution ? 'border-red-300' : ''
                     }`}
                   />
@@ -435,7 +435,7 @@ export function MultiStepSignup({ onSubmit, loading, error }) {
                     placeholder="e.g., Computer Science"
                     value={formData.fieldOfStudy}
                     onChange={(e) => handleChange('fieldOfStudy', e.target.value)}
-                    className={`rounded-lg border-gray-300 focus:border-[#667eea] focus:ring-2 focus:ring-[#667eea]/30 focus:ring-offset-0 h-11 ${
+                    className={`rounded-lg border-gray-300 focus:border-blue-500 focus:ring-2 focus:ring-blue-200 focus:ring-offset-0 h-11 ${
                       errors.fieldOfStudy ? 'border-red-300' : ''
                     }`}
                   />
@@ -454,7 +454,7 @@ export function MultiStepSignup({ onSubmit, loading, error }) {
                     max={new Date().getFullYear() + 5}
                     value={formData.graduationYear}
                     onChange={(e) => handleChange('graduationYear', e.target.value)}
-                    className={`rounded-lg border-gray-300 focus:border-[#667eea] focus:ring-2 focus:ring-[#667eea]/30 focus:ring-offset-0 h-11 ${
+                    className={`rounded-lg border-gray-300 focus:border-blue-500 focus:ring-2 focus:ring-blue-200 focus:ring-offset-0 h-11 ${
                       errors.graduationYear ? 'border-red-300' : ''
                     }`}
                   />
@@ -472,7 +472,7 @@ export function MultiStepSignup({ onSubmit, loading, error }) {
                   value={formData.additionalEducation}
                   onChange={(e) => handleChange('additionalEducation', e.target.value)}
                   rows={3}
-                  className="rounded-lg border-gray-300 focus:border-[#667eea] focus:ring-2 focus:ring-[#667eea]/30 focus:ring-offset-0"
+                  className="rounded-lg border-gray-300 focus:border-blue-500 focus:ring-2 focus:ring-blue-200 focus:ring-offset-0"
                 />
               </div>
             </div>
@@ -486,7 +486,7 @@ export function MultiStepSignup({ onSubmit, loading, error }) {
             variant="outline"
             onClick={handlePrevious}
             disabled={currentStep === 1}
-            className="rounded-lg h-11 px-6 disabled:opacity-50 disabled:cursor-not-allowed"
+            className="rounded-lg h-11 px-6 border-gray-300 hover:bg-purple-50 hover:border-purple-300 hover:text-purple-700 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
           >
             <ChevronLeft className="w-4 h-4 mr-2" />
             Previous
@@ -496,7 +496,7 @@ export function MultiStepSignup({ onSubmit, loading, error }) {
             <Button
               type="button"
               onClick={handleNext}
-              className="rounded-lg h-11 px-6 bg-gradient-to-r from-[#667eea] to-[#764ba2] hover:opacity-90 text-white shadow-sm"
+              className="rounded-lg h-11 px-6 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white shadow-sm transition-all"
             >
               Next
               <ChevronRight className="w-4 h-4 ml-2" />
@@ -505,7 +505,7 @@ export function MultiStepSignup({ onSubmit, loading, error }) {
             <Button
               type="submit"
               disabled={loading}
-              className="rounded-lg h-11 px-6 bg-gradient-to-r from-[#667eea] to-[#764ba2] hover:opacity-90 text-white shadow-sm disabled:opacity-50 disabled:cursor-not-allowed"
+              className="rounded-lg h-11 px-6 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white shadow-sm disabled:opacity-50 disabled:cursor-not-allowed transition-all"
             >
               {loading ? 'Creating Account...' : 'Create Account'}
             </Button>
