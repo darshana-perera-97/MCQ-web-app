@@ -335,3 +335,60 @@ export const sendWhatsAppMessageToMultiple = async (phoneNumbers, message) => {
   };
 };
 
+/**
+ * Restart WhatsApp connection without clearing session
+ * This reconnects the client while preserving authentication
+ */
+export const restartWhatsApp = async () => {
+  try {
+    // Only restart if currently connected
+    if (connectionStatus !== 'connected' || !whatsappClient) {
+      console.log('WhatsApp is not connected, skipping restart');
+      return { success: false, message: 'WhatsApp is not connected' };
+    }
+
+    console.log('🔄 Restarting WhatsApp connection...');
+
+    // Store the current connection status
+    const wasConnected = connectionStatus === 'connected';
+
+    // Clean up the current client without clearing session
+    if (whatsappClient) {
+      try {
+        whatsappClient.removeAllListeners();
+      } catch (err) {
+        console.warn('Error removing listeners during restart:', err?.message || err);
+      }
+
+      try {
+        await whatsappClient.destroy();
+      } catch (err) {
+        console.warn('Error destroying client during restart:', err?.message || err);
+      }
+    }
+
+    // Reset state (but keep session/auth directory)
+    whatsappClient = null;
+    qrCodeData = null;
+    connectionStatus = 'disconnected';
+    isConnecting = false;
+
+    // Wait a moment before reconnecting
+    await new Promise(resolve => setTimeout(resolve, 2000));
+
+    // Reconnect (this will use the existing session)
+    if (wasConnected) {
+      await connectWhatsApp();
+      console.log('✅ WhatsApp connection restarted successfully');
+      return { success: true, message: 'WhatsApp connection restarted successfully' };
+    }
+
+    return { success: false, message: 'WhatsApp was not connected before restart' };
+  } catch (error) {
+    console.error('Error restarting WhatsApp connection:', error);
+    connectionStatus = 'disconnected';
+    isConnecting = false;
+    throw error;
+  }
+};
+

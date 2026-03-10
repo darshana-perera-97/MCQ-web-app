@@ -13,7 +13,7 @@ import analyticsRoutes from './routes/analyticsRoutes.js';
 import whatsappRoutes from './routes/whatsappRoutes.js';
 import materialRoutes from './routes/materialRoutes.js';
 import summaryRoutes from './routes/summaryRoutes.js';
-import { connectWhatsApp } from './services/whatsappService.js';
+import { connectWhatsApp, restartWhatsApp } from './services/whatsappService.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -120,7 +120,7 @@ app.get('*', (req, res) => {
 });
 
 // Start server
-app.listen(PORT, async () => {
+const server = app.listen(PORT, async () => {
   console.log(`🚀 Server is running on ${BACKEND_URL}`);
   console.log(`📝 Environment: ${process.env.NODE_ENV || 'development'}`);
   
@@ -133,5 +133,37 @@ app.listen(PORT, async () => {
     console.log('⚠️  WhatsApp auto-connect failed (this is normal if not previously connected):', error.message);
     console.log('💡 You can connect WhatsApp manually from the Settings page');
   }
+
+  // Set up automatic WhatsApp restart every 2 hours
+  const RESTART_INTERVAL_MS = 2 * 60 * 60 * 1000; // 2 hours in milliseconds
+  console.log(`⏰ WhatsApp will automatically restart every 2 hours`);
+  
+  const restartInterval = setInterval(async () => {
+    try {
+      console.log(`🔄 Scheduled WhatsApp restart initiated at ${new Date().toISOString()}`);
+      await restartWhatsApp();
+    } catch (error) {
+      console.error('❌ Error during scheduled WhatsApp restart:', error.message);
+    }
+  }, RESTART_INTERVAL_MS);
+
+  // Clean up interval on server shutdown
+  process.on('SIGTERM', () => {
+    console.log('🛑 SIGTERM received, cleaning up...');
+    clearInterval(restartInterval);
+    server.close(() => {
+      console.log('✅ Server closed');
+      process.exit(0);
+    });
+  });
+
+  process.on('SIGINT', () => {
+    console.log('🛑 SIGINT received, cleaning up...');
+    clearInterval(restartInterval);
+    server.close(() => {
+      console.log('✅ Server closed');
+      process.exit(0);
+    });
+  });
 });
 
