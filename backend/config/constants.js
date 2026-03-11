@@ -3,8 +3,13 @@
  * Centralized location for all backend URLs and configuration values
  */
 
-const PORT =  3940;
-const BACKEND_URL = `http://93.127.129.102:3940`;
+const PORT =  39401;
+const BACKEND_URL = `http://93.127.129.102:3941`;
+
+
+
+// const PORT =  3940;
+// const BACKEND_URL = `http://93.127.129.102:3940`;
 // const BACKEND_URL = `http://localhost:${PORT}`;
 const API_BASE_URL = `${BACKEND_URL}/api`;
 
