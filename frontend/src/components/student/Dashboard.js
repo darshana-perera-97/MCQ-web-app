@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { ProgressRing } from '../common/ProgressRing';
 import { useAuth } from '../../context/AuthContext';
 import { useLanguage } from '../../context/LanguageContext';
-import { userAPI, mcqAPI, essayAPI, notificationAPI, structuredQuestionAPI, structuredWritingAPI } from '../../services/api';
+import { userAPI, mcqAPI, essayAPI, summaryAPI, notificationAPI, structuredQuestionAPI, structuredWritingAPI } from '../../services/api';
 import { Button } from '../ui/button';
 import { BookOpen, TrendingUp, Award, LogOut, FileText, Bell, PenTool, FileCheck, Languages } from 'lucide-react';
 import { NotificationsDrawer } from './NotificationsDrawer';
@@ -30,6 +30,9 @@ export function Dashboard() {
     return colors[index % colors.length];
   };
 
+  // Set to true to show the Latest Performance card
+  const SHOW_LATEST_PERFORMANCE_CARD = false;
+
   const handleLogout = () => {
     logout();
     navigate('/login');
@@ -44,6 +47,7 @@ export function Dashboard() {
   const [hasNewNotifications, setHasNewNotifications] = useState(false);
   const [structuredQuestions, setStructuredQuestions] = useState([]);
   const [structuredWritings, setStructuredWritings] = useState([]);
+  const [summaries, setSummaries] = useState([]);
 
   useEffect(() => {
     if (!user) {
@@ -53,6 +57,7 @@ export function Dashboard() {
     loadUserStats();
     loadNotificationPreferences();
     loadEssays();
+    loadSummaries();
     loadStructuredQuestions();
     loadStructuredWritings();
     checkNewNotifications();
@@ -73,6 +78,15 @@ export function Dashboard() {
       setEssays(response.essays || []);
     } catch (err) {
       console.error('Error loading essays:', err);
+    }
+  };
+
+  const loadSummaries = async () => {
+    try {
+      const response = await summaryAPI.getAll();
+      setSummaries(response.summaries || []);
+    } catch (err) {
+      console.error('Error loading summaries:', err);
     }
   };
 
@@ -363,6 +377,10 @@ export function Dashboard() {
                   ? 'සාරාංශ අභ්‍යාස සම්පූර්ණ කර ඔබේ අවබෝධය සහ ලිවීමේ කුසලතා වැඩි දියුණු කරන්න.'
                   : 'Complete summary exercises to improve your comprehension and writing skills.'}
               </p>
+              <div className="mb-4">
+                <div className="text-sm text-gray-500 mb-1 font-normal">{language === 'si' ? 'ලබා ගත හැකි ප්‍රශ්න' : 'Available Questions'}</div>
+                <div className="text-3xl font-bold text-gray-900">{summaries.length}</div>
+              </div>
               <Button 
                 onClick={() => navigate('/student/summarize')}
                 className="w-full bg-gray-900 hover:bg-gray-800 text-white rounded-lg h-12 font-medium transition-all"
@@ -406,8 +424,8 @@ export function Dashboard() {
           );
           })()}
 
-          {/* Latest Score Card */}
-          {(() => {
+          {/* Latest Score Card - hidden for now; set SHOW_LATEST_PERFORMANCE_CARD to true to show */}
+          {SHOW_LATEST_PERFORMANCE_CARD && (() => {
             const color = getCardColor(6);
             return (
           <div className={`${color.bg} rounded-2xl shadow-sm border ${color.border} p-8 md:col-span-2 lg:col-span-1`}>

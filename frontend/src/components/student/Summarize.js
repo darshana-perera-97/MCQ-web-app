@@ -255,8 +255,13 @@ export function Summarize() {
                   onClick={() => handleSelectSummary(summary)}
                 >
                   <div className="flex items-start gap-4 mb-4">
-                    <div className={`p-3 ${color.iconBg} rounded-lg border ${color.iconBorder} group-hover:opacity-80 transition-colors`}>
-                      <FileText className={`w-6 h-6 ${color.iconText}`} />
+                    <div className="flex-shrink-0 flex items-center gap-2">
+                      <div className="w-8 h-8 bg-gray-900 text-white rounded-lg flex items-center justify-center font-bold text-sm">
+                        {index + 1}
+                      </div>
+                      <div className={`p-3 ${color.iconBg} rounded-lg border ${color.iconBorder} group-hover:opacity-80 transition-colors`}>
+                        <FileText className={`w-6 h-6 ${color.iconText}`} />
+                      </div>
                     </div>
                     <div className="flex-1 min-w-0">
                       <h3 className="text-lg font-bold text-gray-900 mb-2 group-hover:text-gray-700 transition-colors line-clamp-2">

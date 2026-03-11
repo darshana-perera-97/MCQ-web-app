@@ -14,6 +14,7 @@ export function NotificationComposer() {
   const [imagePreview, setImagePreview] = useState('');
   const [notifications, setNotifications] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [sending, setSending] = useState(false);
 
   useEffect(() => {
     loadNotifications();
@@ -53,12 +54,12 @@ export function NotificationComposer() {
       window.alert('Please fill in title and message');
       return;
     }
-    
+
+    setSending(true);
     try {
       const adminSecret = getAdminSecret();
       await notificationAPI.send({ title, message }, imageFile, adminSecret);
       alert('Notification sent successfully!');
-      // Reset form
       setTitle('');
       setMessage('');
       setImageFile(null);
@@ -66,6 +67,8 @@ export function NotificationComposer() {
       await loadNotifications();
     } catch (err) {
       alert(err.message || 'Failed to send notification');
+    } finally {
+      setSending(false);
     }
   };
 
@@ -160,10 +163,20 @@ export function NotificationComposer() {
 
               <Button
                 onClick={handleSend}
-                className="w-full h-12 rounded-xl bg-gradient-to-r from-[#667eea] to-[#764ba2] hover:opacity-90 text-white gap-2 shadow-sm"
+                disabled={sending}
+                className="w-full h-12 rounded-xl bg-gradient-to-r from-[#667eea] to-[#764ba2] hover:opacity-90 text-white gap-2 shadow-sm disabled:opacity-70 disabled:cursor-not-allowed"
               >
-                <Send className="w-5 h-5" />
-                Send Notification
+                {sending ? (
+                  <>
+                    <span className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                    Sending...
+                  </>
+                ) : (
+                  <>
+                    <Send className="w-5 h-5" />
+                    Send Notification
+                  </>
+                )}
               </Button>
             </div>
           </div>

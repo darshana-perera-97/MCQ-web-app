@@ -16,6 +16,7 @@ import summaryRoutes from './routes/summaryRoutes.js';
 import structuredQuestionRoutes from './routes/structuredQuestionRoutes.js';
 import structuredWritingRoutes from './routes/structuredWritingRoutes.js';
 import { connectWhatsApp, restartWhatsApp } from './services/whatsappService.js';
+import { sendInactivityReminders } from './services/inactivityReminderService.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -141,7 +142,7 @@ const server = app.listen(PORT, async () => {
   // Set up automatic WhatsApp restart every 2 hours
   const RESTART_INTERVAL_MS = 2 * 60 * 60 * 1000; // 2 hours in milliseconds
   console.log(`⏰ WhatsApp will automatically restart every 2 hours`);
-  
+
   const restartInterval = setInterval(async () => {
     try {
       console.log(`🔄 Scheduled WhatsApp restart initiated at ${new Date().toISOString()}`);
@@ -151,10 +152,30 @@ const server = app.listen(PORT, async () => {
     }
   }, RESTART_INTERVAL_MS);
 
-  // Clean up interval on server shutdown
+  // Inactivity reminders: send WhatsApp reminder to users who haven't logged in for 48+ hours
+  const REMINDER_INTERVAL_MS = 6 * 60 * 60 * 1000; // every 6 hours
+  console.log(`📬 Inactivity reminders will run every 6 hours (users inactive 48h+)`);
+
+  const reminderInterval = setInterval(async () => {
+    try {
+      const result = await sendInactivityReminders();
+      if (result.sent > 0) {
+        console.log(`📬 Inactivity reminders sent: ${result.sent}`);
+      }
+    } catch (error) {
+      console.error('❌ Inactivity reminder job error:', error.message);
+    }
+  }, REMINDER_INTERVAL_MS);
+
+  // Clean up intervals on server shutdown
+  const clearAll = () => {
+    clearInterval(restartInterval);
+    clearInterval(reminderInterval);
+  };
+
   process.on('SIGTERM', () => {
     console.log('🛑 SIGTERM received, cleaning up...');
-    clearInterval(restartInterval);
+    clearAll();
     server.close(() => {
       console.log('✅ Server closed');
       process.exit(0);
@@ -163,7 +184,7 @@ const server = app.listen(PORT, async () => {
 
   process.on('SIGINT', () => {
     console.log('🛑 SIGINT received, cleaning up...');
-    clearInterval(restartInterval);
+    clearAll();
     server.close(() => {
       console.log('✅ Server closed');
       process.exit(0);

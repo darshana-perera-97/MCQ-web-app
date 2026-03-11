@@ -221,8 +221,38 @@ const isClientValid = () => {
 /**
  * Handle detached frame errors by marking client as disconnected
  */
+/**
+ * Get a readable error message from caught errors (handles minified/cryptic messages like "t: t")
+ */
+const getErrorMessage = (error) => {
+  if (!error) return 'Unknown error';
+  if (typeof error.message === 'string' && error.message.length > 2 && !/^[a-z]:\s*[a-z]$/i.test(error.message)) {
+    return error.message;
+  }
+  if (typeof error.toString === 'function') {
+    const s = error.toString();
+    if (s && s !== '[object Object]') return s;
+  }
+  return 'Failed to send message (WhatsApp/connection error)';
+};
+
+/**
+ * Normalize phone number for WhatsApp: digits only, ensure country code (94 for Sri Lanka if starts with 0)
+ */
+const normalizePhoneForWhatsApp = (phoneNumber) => {
+  const digits = phoneNumber.replace(/[^0-9]/g, '');
+  if (!digits) return '';
+  // Sri Lanka: 0XXXXXXXXX -> 94XXXXXXXXX (e.g. 0779695412 -> 94779695412)
+  if (digits.startsWith('0') && digits.length >= 10) {
+    return '94' + digits.slice(1);
+  }
+  if (digits.startsWith('0')) return '94' + digits.slice(1);
+  // Already has country code or international format
+  return digits;
+};
+
 const handleDetachedFrameError = (error) => {
-  const errorMessage = error?.message || '';
+  const errorMessage = getErrorMessage(error);
   if (errorMessage.includes('detached Frame') || errorMessage.includes('Target closed') || errorMessage.includes('Session closed')) {
     console.warn('WhatsApp client frame detached - marking as disconnected');
     connectionStatus = 'disconnected';
@@ -251,21 +281,20 @@ export const sendWhatsAppMessage = async (phoneNumber, message) => {
       throw new Error('WhatsApp is not connected');
     }
 
-    // Format phone number (remove + and spaces, add country code if needed)
-    const formattedNumber = phoneNumber.replace(/[^0-9]/g, '');
-    const chatId = formattedNumber.includes('@c.us') 
-      ? formattedNumber 
-      : `${formattedNumber}@c.us`;
+    const normalized = normalizePhoneForWhatsApp(phoneNumber);
+    if (!normalized) throw new Error(`Invalid phone number: ${phoneNumber}`);
+    const chatId = `${normalized}@c.us`;
+    const messageText = typeof message === 'string' ? message : String(message ?? '');
 
-    await whatsappClient.sendMessage(chatId, message);
+    await whatsappClient.sendMessage(chatId, messageText);
     return { success: true, message: 'Message sent successfully' };
   } catch (error) {
-    // Check if this is a detached frame error
     if (handleDetachedFrameError(error)) {
       throw new Error('WhatsApp connection lost - please reconnect');
     }
-    console.error('Error sending WhatsApp message:', error);
-    throw error;
+    const errMsg = getErrorMessage(error);
+    console.error('Error sending WhatsApp message:', errMsg, error);
+    throw new Error(errMsg);
   }
 };
 
@@ -276,8 +305,14 @@ export const getWhatsAppClient = () => {
   return whatsappClient;
 };
 
+/** Delay between bulk WhatsApp messages (20-30 seconds to avoid rate limits) */
+const BULK_SEND_DELAY_MS = 25 * 1000; // 25 seconds
+
+const delay = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+
 /**
  * Send WhatsApp message to multiple phone numbers
+ * Waits 20-30 seconds between each message to avoid rate limiting.
  */
 export const sendWhatsAppMessageToMultiple = async (phoneNumbers, message) => {
   const results = [];
@@ -287,9 +322,12 @@ export const sendWhatsAppMessageToMultiple = async (phoneNumbers, message) => {
     throw new Error('WhatsApp is not connected');
   }
 
-  for (const phoneNumber of phoneNumbers) {
+  const messageText = typeof message === 'string' ? message : String(message ?? '');
+  const total = phoneNumbers.length;
+
+  for (let i = 0; i < phoneNumbers.length; i++) {
+    const phoneNumber = phoneNumbers[i];
     try {
-      // Check if client is still valid before each send attempt
       if (!isClientValid()) {
         const errorMsg = 'WhatsApp connection lost during bulk send';
         errors.push({ phoneNumber, error: errorMsg });
@@ -297,19 +335,20 @@ export const sendWhatsAppMessageToMultiple = async (phoneNumbers, message) => {
         continue;
       }
 
-      // Format phone number (remove + and spaces, add country code if needed)
-      const formattedNumber = phoneNumber.replace(/[^0-9]/g, '');
-      const chatId = formattedNumber.includes('@c.us') 
-        ? formattedNumber 
-        : `${formattedNumber}@c.us`;
+      const normalized = normalizePhoneForWhatsApp(phoneNumber);
+      if (!normalized) {
+        const errorMsg = 'Invalid phone number format';
+        errors.push({ phoneNumber, error: errorMsg });
+        results.push({ phoneNumber, success: false, error: errorMsg });
+        continue;
+      }
+      const chatId = `${normalized}@c.us`;
 
-      await whatsappClient.sendMessage(chatId, message);
+      await whatsappClient.sendMessage(chatId, messageText);
       results.push({ phoneNumber, success: true });
-      console.log(`WhatsApp message sent to ${phoneNumber}`);
+      console.log(`WhatsApp message sent to ${phoneNumber} (${i + 1}/${total})`);
     } catch (error) {
-      // Check if this is a detached frame error
       if (handleDetachedFrameError(error)) {
-        // Mark remaining numbers as failed due to connection loss
         const remainingNumbers = phoneNumbers.slice(phoneNumbers.indexOf(phoneNumber));
         for (const remainingNumber of remainingNumbers) {
           if (!results.find(r => r.phoneNumber === remainingNumber)) {
@@ -317,12 +356,19 @@ export const sendWhatsAppMessageToMultiple = async (phoneNumbers, message) => {
             results.push({ phoneNumber: remainingNumber, success: false, error: 'WhatsApp connection lost' });
           }
         }
-        break; // Stop trying to send remaining messages
+        break;
       }
-      
-      console.error(`Error sending WhatsApp message to ${phoneNumber}:`, error);
-      errors.push({ phoneNumber, error: error.message });
-      results.push({ phoneNumber, success: false, error: error.message });
+
+      const errMsg = getErrorMessage(error);
+      console.error(`Error sending WhatsApp message to ${phoneNumber}:`, errMsg);
+      errors.push({ phoneNumber, error: errMsg });
+      results.push({ phoneNumber, success: false, error: errMsg });
+    }
+
+    // Wait 20-30 seconds before next message (skip after last)
+    if (i < phoneNumbers.length - 1) {
+      console.log(`Waiting ${BULK_SEND_DELAY_MS / 1000}s before next message...`);
+      await delay(BULK_SEND_DELAY_MS);
     }
   }
 

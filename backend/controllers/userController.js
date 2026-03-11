@@ -32,10 +32,10 @@ async function sendOTP(email, name, otp, phone = null) {
     results.email.error = emailError.message;
   }
 
-  // Send OTP via WhatsApp if phone number is provided
-  if (phone) {
+  // Send OTP via WhatsApp as well when phone is provided (both email and WhatsApp)
+  const phoneToUse = phone && String(phone).trim() ? String(phone).trim() : null;
+  if (phoneToUse) {
     try {
-      // Check if WhatsApp is enabled in settings
       const settings = await settingsModel.read();
       const notificationsEnabled = settings.notifications || { emailEnabled: true, whatsappEnabled: true };
       const whatsappEnabled = notificationsEnabled.whatsappEnabled !== false;
@@ -44,14 +44,12 @@ async function sendOTP(email, name, otp, phone = null) {
         const whatsappStatus = getWhatsAppStatus();
         if (whatsappStatus.isConnected) {
           const otpMessage = `Hello ${name},\n\nYour OTP for email verification is: *${otp}*\n\nThis OTP will expire in 10 minutes.\n\nPlease do not share this OTP with anyone.`;
-          await sendWhatsAppMessage(phone, otpMessage);
+          await sendWhatsAppMessage(phoneToUse, otpMessage);
           results.whatsapp.sent = true;
         } else {
-          console.log('WhatsApp is not connected, skipping WhatsApp OTP');
           results.whatsapp.error = 'WhatsApp is not connected';
         }
       } else {
-        console.log('WhatsApp notifications are disabled in settings');
         results.whatsapp.error = 'WhatsApp notifications are disabled';
       }
     } catch (whatsappError) {
@@ -81,10 +79,10 @@ async function sendApprovalNotification(email, name, phone = null) {
     results.email.error = emailError.message;
   }
 
-  // Send approval WhatsApp message if phone number is provided
-  if (phone) {
+  // Send approval via WhatsApp as well when phone is provided (both email and WhatsApp)
+  const phoneToUse = phone && String(phone).trim() ? String(phone).trim() : null;
+  if (phoneToUse) {
     try {
-      // Check if WhatsApp is enabled in settings
       const settings = await settingsModel.read();
       const notificationsEnabled = settings.notifications || { emailEnabled: true, whatsappEnabled: true };
       const whatsappEnabled = notificationsEnabled.whatsappEnabled !== false;
@@ -93,14 +91,12 @@ async function sendApprovalNotification(email, name, phone = null) {
         const whatsappStatus = getWhatsAppStatus();
         if (whatsappStatus.isConnected) {
           const approvalMessage = `Hello ${name},\n\n🎉 *Great News!*\n\nYour account has been approved by the administrator. You can now log in and start using the Learning Management System.\n\nWe're excited to have you on board!\n\nIf you have any questions or need assistance, please don't hesitate to contact our support team.`;
-          await sendWhatsAppMessage(phone, approvalMessage);
+          await sendWhatsAppMessage(phoneToUse, approvalMessage);
           results.whatsapp.sent = true;
         } else {
-          console.log('WhatsApp is not connected, skipping WhatsApp approval notification');
           results.whatsapp.error = 'WhatsApp is not connected';
         }
       } else {
-        console.log('WhatsApp notifications are disabled in settings');
         results.whatsapp.error = 'WhatsApp notifications are disabled';
       }
     } catch (whatsappError) {
@@ -273,8 +269,10 @@ export const login = async (req, res) => {
 
       // Check and reset daily count if needed (only for non-admin users)
       await userModel.checkAndResetDailyCount(user.id);
+      // Update last login time for inactivity reminders
+      await userModel.update(user.id, { lastLoginAt: new Date().toISOString() });
     }
-    
+
     const updatedUser = await userModel.findById(user.id);
 
     // Remove password from response
@@ -437,8 +435,8 @@ export const approveUser = async (req, res) => {
 
     await userModel.update(id, { status: 'approved' });
 
-    // Send approval notification via both email and WhatsApp
-    const phone = user.phone || user.phoneNumber || user.mobile || null;
+    // Send approval notification via both email and WhatsApp (use phone or alternatePhone)
+    const phone = user.phone || user.phoneNumber || user.mobile || user.alternatePhone || null;
     const notificationResults = await sendApprovalNotification(user.email, user.name, phone);
 
     const updatedUser = await userModel.findById(id);
@@ -538,8 +536,8 @@ export const resendOTP = async (req, res) => {
       otpExpiry: otpExpiry.toISOString()
     });
 
-    // Send OTP via both email and WhatsApp
-    const phone = user.phone || user.phoneNumber || user.mobile || null;
+    // Send OTP via both email and WhatsApp (use phone or alternatePhone)
+    const phone = user.phone || user.phoneNumber || user.mobile || user.alternatePhone || null;
     const otpResults = await sendOTP(email, user.name, otp, phone);
 
     // Build response message based on what was sent

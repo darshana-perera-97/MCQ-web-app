@@ -58,13 +58,22 @@ export function MultiStepSignup({ onSubmit, loading, error }) {
           newErrors.confirmPassword = 'Passwords do not match';
         }
         break;
-      case 2:
-        if (!formData.phone.trim()) newErrors.phone = 'Phone number is required';
+      case 2: {
+        const phoneRegex = /^07\d{8}$/; // Sri Lankan mobile: 07 followed by 8 digits
+        if (!formData.phone.trim()) {
+          newErrors.phone = 'Phone number is required';
+        } else if (!phoneRegex.test(formData.phone.trim().replace(/\s/g, ''))) {
+          newErrors.phone = 'Phone must be in format 07XXXXXXXX (10 digits starting with 07)';
+        }
+        if (formData.alternatePhone.trim() && !phoneRegex.test(formData.alternatePhone.trim().replace(/\s/g, ''))) {
+          newErrors.alternatePhone = 'Alternate phone must be in format 07XXXXXXXX';
+        }
         if (!formData.address.trim()) newErrors.address = 'Address is required';
         if (!formData.city.trim()) newErrors.city = 'City is required';
         if (!formData.state.trim()) newErrors.state = 'State is required';
         if (!formData.zipCode.trim()) newErrors.zipCode = 'Zip code is required';
         break;
+      }
       case 3:
         if (!formData.highestEducation) newErrors.highestEducation = 'Highest education is required';
         if (!formData.institution.trim()) newErrors.institution = 'Institution is required';
@@ -275,14 +284,19 @@ export function MultiStepSignup({ onSubmit, loading, error }) {
                   <Input
                     id="phone"
                     type="tel"
-                    placeholder="+1 234 567 8900"
+                    placeholder="07XXXXXXXX"
+                    maxLength={10}
                     value={formData.phone}
-                    onChange={(e) => handleChange('phone', e.target.value)}
+                    onChange={(e) => {
+                      const v = e.target.value.replace(/\D/g, '');
+                      if (v === '' || v === '0' || (v.startsWith('07') && v.length <= 10)) handleChange('phone', v);
+                    }}
                     className={`rounded-lg border-gray-300 focus:border-blue-500 focus:ring-2 focus:ring-blue-200 focus:ring-offset-0 h-11 ${
                       errors.phone ? 'border-red-300' : ''
                     }`}
                   />
                   {errors.phone && <p className="text-sm text-red-600">{errors.phone}</p>}
+                  <p className="text-xs text-gray-500">Format: 07 followed by 8 digits (e.g. 0771234567)</p>
                 </div>
 
                 <div className="space-y-2">
@@ -292,11 +306,18 @@ export function MultiStepSignup({ onSubmit, loading, error }) {
                   <Input
                     id="alternatePhone"
                     type="tel"
-                    placeholder="+1 234 567 8900"
+                    placeholder="07XXXXXXXX"
+                    maxLength={10}
                     value={formData.alternatePhone}
-                    onChange={(e) => handleChange('alternatePhone', e.target.value)}
-                    className="rounded-lg border-gray-300 focus:border-blue-500 focus:ring-2 focus:ring-blue-200 focus:ring-offset-0 h-11"
+                    onChange={(e) => {
+                      const v = e.target.value.replace(/\D/g, '');
+                      if (v === '' || v === '0' || (v.startsWith('07') && v.length <= 10)) handleChange('alternatePhone', v);
+                    }}
+                    className={`rounded-lg border-gray-300 focus:border-blue-500 focus:ring-2 focus:ring-blue-200 focus:ring-offset-0 h-11 ${
+                      errors.alternatePhone ? 'border-red-300' : ''
+                    }`}
                   />
+                  {errors.alternatePhone && <p className="text-sm text-red-600">{errors.alternatePhone}</p>}
                 </div>
               </div>
 
