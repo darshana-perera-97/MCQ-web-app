@@ -4,7 +4,7 @@ import { useAuth } from '../../context/AuthContext';
 import { structuredQuestionAPI, structuredWritingAPI, userAPI } from '../../services/api';
 import { Button } from '../ui/button';
 import { Input } from '../ui/input';
-import { ArrowLeft, Search, Loader, FileText, CheckCircle2, Circle, Eye, PenLine } from 'lucide-react';
+import { ArrowLeft, Search, Loader, FileText, CheckCircle2, Circle, Eye, PenLine, Check, X, ChevronRight } from 'lucide-react';
 import { useLanguage } from '../../context/LanguageContext';
 
 export function StructuredQuestions() {
@@ -25,6 +25,9 @@ export function StructuredQuestions() {
   const [completedQuestionIds, setCompletedQuestionIds] = useState([]);
   const [completedWritingIds, setCompletedWritingIds] = useState([]);
   const [togglingId, setTogglingId] = useState(null);
+  // One-by-one MCQ flow: current index and whether current question was submitted (show answer + Next)
+  const [currentMcqIndex, setCurrentMcqIndex] = useState(0);
+  const [submittedMcqIndex, setSubmittedMcqIndex] = useState(null);
 
   // Random light color palette
   const getRandomColor = (index) => {
@@ -136,7 +139,17 @@ export function StructuredQuestions() {
     setSelectedType(null);
     setSelectedAnswers({});
     setRevealedAnswers({});
+    setCurrentMcqIndex(0);
+    setSubmittedMcqIndex(null);
   };
+
+  // Reset one-by-one MCQ state when opening a different question set
+  useEffect(() => {
+    if (selectedQuestion && selectedType === 'mcq') {
+      setCurrentMcqIndex(0);
+      setSubmittedMcqIndex(null);
+    }
+  }, [selectedQuestion?.id, selectedType]);
 
   const toggleRevealAnswer = (index) => {
     setRevealedAnswers(prev => ({ ...prev, [index]: !prev[index] }));
@@ -232,10 +245,53 @@ export function StructuredQuestions() {
     );
   }
 
-  // Detail view: MCQ type (existing)
+  // Detail view: MCQ type — one question at a time, Submit then show answer, then Next question
   if (selectedQuestion && selectedType === 'mcq') {
     const colorScheme = getRandomColor(0);
     const sortedMcqs = [...(selectedQuestion.mcqs || [])].sort((a, b) => (a.order || 0) - (b.order || 0));
+    const totalMcqs = sortedMcqs.length;
+    const isFinished = totalMcqs === 0 || currentMcqIndex >= totalMcqs;
+    const currentMcq = sortedMcqs[currentMcqIndex];
+    const mcqId = currentMcq ? (currentMcq.id || `mcq-${currentMcqIndex}`) : null;
+    const selectedAnswer = mcqId ? selectedAnswers[mcqId] : null;
+    const isSubmitted = submittedMcqIndex === currentMcqIndex;
+    const correctAnswer = currentMcq ? (currentMcq.answer || 'A').toUpperCase().replace(/[^ABCD]/g, 'A') : null;
+    const isCorrect = isSubmitted && selectedAnswer === correctAnswer;
+
+    const handleSubmitCurrent = () => {
+      if (selectedAnswer == null || submittedMcqIndex !== null) return;
+      setSubmittedMcqIndex(currentMcqIndex);
+    };
+
+    const handleNextMcq = () => {
+      if (currentMcqIndex + 1 < totalMcqs) {
+        setCurrentMcqIndex((i) => i + 1);
+        setSubmittedMcqIndex(null);
+      } else {
+        setCurrentMcqIndex(totalMcqs);
+      }
+    };
+
+    // All done — show completion and back button
+    if (isFinished) {
+      return (
+        <div className="min-h-screen bg-gray-50">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
+            <div className="bg-white border border-gray-200 rounded-2xl p-8 shadow-sm text-center max-w-lg mx-auto">
+              <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                <Check className="w-8 h-8 text-green-600" />
+              </div>
+              <h2 className="text-xl font-semibold text-gray-900 mb-2">{language === 'si' ? 'සියල්ල සම්පූර්ණයි' : 'All done!'}</h2>
+              <p className="text-gray-600 mb-6">{language === 'si' ? 'ඔබ මෙම ප්‍රශ්න සියල්ල සම්පූර්ණ කළා.' : 'You have completed all questions in this set.'}</p>
+              <Button onClick={handleBackToList} className="rounded-xl gap-2">
+                <ArrowLeft className="w-4 h-4" />
+                {language === 'si' ? 'ආපසු ප්‍රශ්න ලැයිස්තුවට' : 'Back to Questions'}
+              </Button>
+            </div>
+          </div>
+        </div>
+      );
+    }
 
     return (
       <div className="min-h-screen bg-gray-50">
@@ -248,6 +304,9 @@ export function StructuredQuestions() {
                   {language === 'si' ? 'ආපසු' : 'Back to Questions'}
                 </Button>
                 <h1 className="text-2xl font-bold text-gray-900">{selectedQuestion.title || selectedQuestion.id}</h1>
+              </div>
+              <div className="text-sm font-medium text-gray-500">
+                {language === 'si' ? `ප්‍රශ්න ${currentMcqIndex + 1} / ${totalMcqs}` : `Question ${currentMcqIndex + 1} of ${totalMcqs}`}
               </div>
             </div>
           </div>
@@ -269,42 +328,82 @@ export function StructuredQuestions() {
 
             <div className="space-y-6">
               <div className="bg-white border border-gray-200 rounded-2xl p-6 shadow-sm">
-                <h2 className="text-xl font-semibold text-gray-900 mb-6">{language === 'si' ? 'ප්‍රශ්න' : 'Questions'}</h2>
-                <div className="space-y-6">
-                  {sortedMcqs.map((mcq, index) => {
-                    const mcqId = mcq.id || `mcq-${index}`;
-                    const selectedAnswer = selectedAnswers[mcqId];
-                    return (
-                      <div key={mcqId} className="border border-gray-200 rounded-xl p-5 bg-gray-50">
-                        <div className="flex items-start gap-3 mb-4">
-                          <div className="flex-shrink-0 w-8 h-8 bg-gray-900 text-white rounded-lg flex items-center justify-center font-semibold">{index + 1}</div>
-                          <p className="text-base font-medium text-gray-900 flex-1">{mcq.question}</p>
-                        </div>
-                        <div className="space-y-2 ml-11">
-                          {['A', 'B', 'C', 'D'].map((option) => {
-                            const optionText = mcq[`option${option}`];
-                            const isSelected = selectedAnswer === option;
-                            return (
-                              <button
-                                key={option}
-                                onClick={() => handleAnswerSelect(mcqId, option)}
-                                className={`w-full text-left p-3 rounded-lg border-2 transition-all ${
-                                  isSelected ? 'border-gray-900 bg-gray-100' : 'border-gray-200 bg-white hover:border-gray-300'
-                                }`}
-                              >
-                                <div className="flex items-center gap-3">
-                                  {isSelected ? <CheckCircle2 className="w-5 h-5 text-gray-900 flex-shrink-0" /> : <Circle className="w-5 h-5 text-gray-400 flex-shrink-0" />}
-                                  <span className="font-medium text-gray-700 mr-2">{option}.</span>
-                                  <span className="text-gray-700">{optionText}</span>
-                                </div>
-                              </button>
-                            );
-                          })}
+                <div className="border border-gray-200 rounded-xl p-5 bg-gray-50">
+                  <div className="flex items-start gap-3 mb-4">
+                    <div className="flex-shrink-0 w-8 h-8 bg-gray-900 text-white rounded-lg flex items-center justify-center font-semibold">{currentMcqIndex + 1}</div>
+                    <p className="text-base font-medium text-gray-900 flex-1">{currentMcq.question}</p>
+                  </div>
+                  <div className="space-y-2 ml-11">
+                    {['A', 'B', 'C', 'D'].map((option) => {
+                      const optionText = currentMcq[`option${option}`];
+                      const isSelected = selectedAnswer === option;
+                      const isCorrectOpt = correctAnswer === option;
+                      const showCorrect = isSubmitted && isCorrectOpt;
+                      const showIncorrect = isSubmitted && isSelected && !isCorrect;
+                      return (
+                        <button
+                          key={option}
+                          onClick={() => !isSubmitted && handleAnswerSelect(mcqId, option)}
+                          disabled={isSubmitted}
+                          className={`w-full text-left p-3 rounded-lg border-2 transition-all flex items-center gap-3 ${
+                            showCorrect ? 'border-green-500 bg-green-50' :
+                            showIncorrect ? 'border-red-500 bg-red-50' :
+                            isSelected ? 'border-gray-900 bg-gray-100' : 'border-gray-200 bg-white hover:border-gray-300'
+                          } ${isSubmitted ? 'cursor-default' : ''}`}
+                        >
+                          {showCorrect && <Check className="w-5 h-5 text-green-600 flex-shrink-0" />}
+                          {showIncorrect && !showCorrect && <X className="w-5 h-5 text-red-600 flex-shrink-0" />}
+                          {!isSubmitted && (isSelected ? <CheckCircle2 className="w-5 h-5 text-gray-900 flex-shrink-0" /> : <Circle className="w-5 h-5 text-gray-400 flex-shrink-0" />)}
+                          <span className="font-medium text-gray-700 mr-2">{option}.</span>
+                          <span className="text-gray-700">{optionText}</span>
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+
+                {!isSubmitted && selectedAnswer && (
+                  <Button
+                    onClick={handleSubmitCurrent}
+                    className="mt-6 w-full h-12 rounded-xl bg-gradient-to-r from-[#667eea] to-[#764ba2] hover:opacity-90 text-white font-medium"
+                  >
+                    {language === 'si' ? 'ඉදිරිපත් කරන්න' : 'Submit'}
+                  </Button>
+                )}
+
+                {isSubmitted && (
+                  <div className="mt-6 space-y-4">
+                    <div className={`p-4 rounded-xl border-2 ${isCorrect ? 'bg-green-50 border-green-200' : 'bg-red-50 border-red-200'}`}>
+                      <div className="flex items-center gap-3">
+                        {isCorrect ? (
+                          <Check className="w-6 h-6 text-green-600 flex-shrink-0" />
+                        ) : (
+                          <X className="w-6 h-6 text-red-600 flex-shrink-0" />
+                        )}
+                        <div className="text-left">
+                          <p className={`font-semibold ${isCorrect ? 'text-green-900' : 'text-red-900'}`}>
+                            {isCorrect ? (language === 'si' ? 'නිවැරදියි!' : 'Correct!') : (language === 'si' ? 'වැරදියි' : 'Incorrect')}
+                          </p>
+                          {!isCorrect && correctAnswer && (
+                            <p className="text-sm text-gray-700 mt-1">
+                              {language === 'si' ? 'නිවැරදි පිළිතුර:' : 'Correct answer:'} <strong>{correctAnswer}. {currentMcq[`option${correctAnswer}`]}</strong>
+                            </p>
+                          )}
                         </div>
                       </div>
-                    );
-                  })}
-                </div>
+                    </div>
+                    <Button
+                      onClick={handleNextMcq}
+                      className="w-full h-12 rounded-xl bg-gradient-to-r from-[#00c6ff] to-[#0072ff] hover:opacity-90 text-white font-medium gap-2"
+                    >
+                      {currentMcqIndex + 1 < totalMcqs
+                        ? (language === 'si' ? 'ඊළඟ ප්‍රශ්නය' : 'Next question')
+                        : (language === 'si' ? 'අවසන් කරන්න' : 'Finish')
+                      }
+                      <ChevronRight className="w-5 h-5" />
+                    </Button>
+                  </div>
+                )}
               </div>
             </div>
           </div>

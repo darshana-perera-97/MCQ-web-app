@@ -304,21 +304,26 @@ export function QuestionEditor() {
     }
   };
 
-  // Parse CSV line handling quoted fields (commas inside quotes)
+  // Parse CSV line: quoted fields (commas inside quotes), optional space after comma before quote
   const parseCSVLine = (line) => {
     const fields = [];
     let i = 0;
+    const skipSpace = () => { while (i < line.length && /\s/.test(line[i])) i += 1; };
     while (i < line.length) {
+      skipSpace();
+      if (i >= line.length) break;
       if (line[i] === '"') {
         i += 1;
         let end = i;
-        while (end < line.length && (line[end] !== '"' || (line[end + 1] === '"' && end + 1 < line.length))) {
-          if (line[end] === '"' && line[end + 1] === '"') end += 2;
-          else end += 1;
+        while (end < line.length) {
+          if (line[end] === '"') {
+            if (line[end + 1] === '"') end += 2;
+            else break;
+          } else end += 1;
         }
         fields.push(line.slice(i, end).replace(/""/g, '"'));
         i = end + 1;
-        if (line[i] === ',') i += 1;
+        if (i < line.length && line[i] === ',') i += 1;
       } else {
         let end = line.indexOf(',', i);
         if (end === -1) end = line.length;
@@ -327,6 +332,127 @@ export function QuestionEditor() {
       }
     }
     return fields;
+  };
+
+  // Parse structured MCQ CSV text; returns { success, message, parsedMcqs?, errors? }.
+  const parseStructuredCSVText = (text) => {
+    let t = text || '';
+    if (t.charCodeAt(0) === 0xfeff) t = t.slice(1);
+    const lines = t.split(/\r?\n/).filter((l) => l.trim());
+    if (lines.length < 1) {
+      return { success: false, message: 'CSV must have at least one row (header + data).' };
+    }
+    const normalizeHeader = (h) => String(h).trim().toLowerCase().replace(/\s+/g, '').replace(/_/g, '').replace(/\ufeff/g, '');
+    const firstRow = parseCSVLine(lines[0].replace(/\r$/, ''));
+    const firstAsHeaders = firstRow.map(normalizeHeader);
+    const hasHeader =
+      firstAsHeaders.includes('question') &&
+      firstAsHeaders.includes('optiona') &&
+      firstAsHeaders.includes('optionb') &&
+      firstAsHeaders.includes('optionc') &&
+      firstAsHeaders.includes('optiond') &&
+      firstAsHeaders.includes('answer');
+    let questionIdx, optionAIdx, optionBIdx, optionCIdx, optionDIdx, answerIdx, dataStart;
+    if (hasHeader && lines.length >= 2) {
+      questionIdx = firstAsHeaders.indexOf('question');
+      optionAIdx = firstAsHeaders.indexOf('optiona');
+      optionBIdx = firstAsHeaders.indexOf('optionb');
+      optionCIdx = firstAsHeaders.indexOf('optionc');
+      optionDIdx = firstAsHeaders.indexOf('optiond');
+      answerIdx = firstAsHeaders.indexOf('answer');
+      dataStart = 1;
+    } else {
+      questionIdx = 0;
+      optionAIdx = 1;
+      optionBIdx = 2;
+      optionCIdx = 3;
+      optionDIdx = 4;
+      answerIdx = 5;
+      dataStart = 0;
+    }
+    const parsedMcqs = [];
+    const errors = [];
+    const parseCSVLineFallback = (line) => {
+      const out = [];
+      let idx = 0;
+      const quoted = [];
+      const s = line.replace(/"((?:[^"]|"")*)"/g, (_, content) => {
+        quoted.push(content.replace(/""/g, '"'));
+        return `\x00${idx++}\x00`;
+      });
+      const parts = s.split(',');
+      for (const p of parts) {
+        const m = p.trim().match(/^\x00(\d+)\x00$/);
+        out.push(m ? quoted[parseInt(m[1], 10)] : p.trim());
+      }
+      return out;
+    };
+
+    for (let r = dataStart; r < lines.length; r++) {
+      const rawLine = lines[r].replace(/\r$/, '');
+      let values = parseCSVLine(rawLine);
+      // Try fallback when column count is wrong (e.g. quoted fields or extra commas).
+      if (values.length !== 6 && values.length !== 7) {
+        const fb = parseCSVLineFallback(rawLine);
+        if (fb.length === 6 || fb.length === 7) values = fb;
+      }
+      const getVal = (idx) => (idx >= 0 && idx < values.length ? String(values[idx]).replace(/\r/g, '').trim() : '');
+      const question = getVal(questionIdx);
+      const optionA = getVal(optionAIdx);
+      const optionB = getVal(optionBIdx);
+      const optionC = getVal(optionCIdx);
+      const optionD = getVal(optionDIdx);
+      let answerRaw = getVal(answerIdx).trim();
+      let answer = answerRaw.toUpperCase().replace(/[^ABCD1234]/g, '');
+      const numToLetter = { '1': 'A', '2': 'B', '3': 'C', '4': 'D' };
+      if (numToLetter[answer]) answer = numToLetter[answer];
+      else if (!['A', 'B', 'C', 'D'].includes(answer)) answer = 'A';
+      if (!question || !optionA || !optionB || !optionC || !optionD) {
+        errors.push(`Row ${r + 1}: missing required fields (question, optionA–D)`);
+        continue;
+      }
+      parsedMcqs.push({
+        id: '',
+        question,
+        optionA,
+        optionB,
+        optionC,
+        optionD,
+        answer,
+        order: parsedMcqs.length,
+      });
+    }
+    if (parsedMcqs.length === 0) {
+      return {
+        success: false,
+        message: 'No valid rows found. Use header: Question, Option A, Option B, Option C, Option D, Answer. Quote fields that contain commas.',
+        errors: errors.length > 0 ? errors : undefined,
+      };
+    }
+    return {
+      success: true,
+      message: `Added ${parsedMcqs.length} MCQ(s). Enter the paragraph above and click "Add Structured Question" to create.`,
+      parsedMcqs,
+    };
+  };
+
+  const applyStructuredCSVResult = (result, clearFileInput = false) => {
+    if (result.success) {
+      setStructuredForm((prev) => ({ ...prev, mcqs: result.parsedMcqs }));
+      setStructuredCsvUploadResult({ success: true, message: result.message });
+      if (clearFileInput) {
+        setStructuredCsvFile(null);
+        const fileInput = document.getElementById('structured-csv-upload');
+        if (fileInput) fileInput.value = '';
+      }
+    } else {
+      setStructuredCsvUploadResult({
+        success: false,
+        message: result.message,
+        errors: result.errors,
+      });
+    }
+    setStructuredCsvUploading(false);
   };
 
   const handleStructuredCSVFileChange = (e) => {
@@ -338,6 +464,17 @@ export function QuestionEditor() {
       }
       setStructuredCsvFile(file);
       setStructuredCsvUploadResult(null);
+      setStructuredCsvUploading(true);
+      const reader = new FileReader();
+      reader.onload = (ev) => {
+        try {
+          const result = parseStructuredCSVText(ev.target?.result || '');
+          applyStructuredCSVResult(result, false);
+        } catch (err) {
+          applyStructuredCSVResult({ success: false, message: err.message || 'Failed to parse CSV' });
+        }
+      };
+      reader.readAsText(file, 'UTF-8');
     }
   };
 
@@ -349,89 +486,15 @@ export function QuestionEditor() {
     setStructuredCsvUploading(true);
     setStructuredCsvUploadResult(null);
     const reader = new FileReader();
-    reader.onload = (e) => {
+    reader.onload = (ev) => {
       try {
-        let text = e.target?.result || '';
-        if (text.charCodeAt(0) === 0xfeff) text = text.slice(1);
-        const lines = text.split(/\r?\n/).filter((l) => l.trim());
-        if (lines.length < 2) {
-          setStructuredCsvUploadResult({ success: false, message: 'CSV must have a header row and at least one data row' });
-          setStructuredCsvUploading(false);
-          return;
-        }
-        const headerLine = parseCSVLine(lines[0]);
-        const normalizeHeader = (h) => h.trim().toLowerCase().replace(/\s+/g, '').replace(/_/g, '').replace(/\ufeff/g, '');
-        const headers = headerLine.map(normalizeHeader);
-        const questionIdx = headers.findIndex((h) => h === 'question');
-        const optionAIdx = headers.findIndex((h) => h === 'optiona');
-        const optionBIdx = headers.findIndex((h) => h === 'optionb');
-        const optionCIdx = headers.findIndex((h) => h === 'optionc');
-        const optionDIdx = headers.findIndex((h) => h === 'optiond');
-        const answerIdx = headers.findIndex((h) => h === 'answer');
-        const categoryIdx = headers.findIndex((h) => h === 'category');
-        const required = [questionIdx, optionAIdx, optionBIdx, optionCIdx, optionDIdx, answerIdx];
-        if (required.some((i) => i === -1)) {
-          setStructuredCsvUploadResult({
-            success: false,
-            message: 'CSV must include columns: question, optionA, optionB, optionC, optionD, answer. Optional: category',
-          });
-          setStructuredCsvUploading(false);
-          return;
-        }
-        const parsedMcqs = [];
-        const errors = [];
-        for (let r = 1; r < lines.length; r++) {
-          const values = parseCSVLine(lines[r]);
-          const getVal = (idx) => (idx >= 0 && idx < values.length ? values[idx].trim() : '');
-          const question = getVal(questionIdx);
-          const optionA = getVal(optionAIdx);
-          const optionB = getVal(optionBIdx);
-          const optionC = getVal(optionCIdx);
-          const optionD = getVal(optionDIdx);
-          let answerRaw = getVal(answerIdx).trim();
-          let answer = answerRaw.toUpperCase().replace(/[^ABCD1234]/g, '');
-          const numToLetter = { '1': 'A', '2': 'B', '3': 'C', '4': 'D' };
-          if (numToLetter[answer]) answer = numToLetter[answer];
-          else if (!['A', 'B', 'C', 'D'].includes(answer)) answer = 'A';
-          if (!question || !optionA || !optionB || !optionC || !optionD) {
-            errors.push(`Row ${r + 1}: missing required fields (question, optionA–D)`);
-            continue;
-          }
-          parsedMcqs.push({
-            id: '',
-            question,
-            optionA,
-            optionB,
-            optionC,
-            optionD,
-            answer,
-            order: parsedMcqs.length,
-          });
-        }
-        if (parsedMcqs.length === 0) {
-          setStructuredCsvUploadResult({
-            success: false,
-            message: 'No valid rows found. Each row must have question, optionA, optionB, optionC, optionD, answer.',
-            errors: errors.length > 0 ? errors : undefined,
-          });
-          setStructuredCsvUploading(false);
-          return;
-        }
-        setStructuredForm((prev) => ({ ...prev, mcqs: parsedMcqs }));
-        setStructuredCsvUploadResult({
-          success: true,
-          message: `Added ${parsedMcqs.length} MCQ(s). Enter the paragraph above and click "Add Structured Question" to create.`,
-        });
-        setStructuredCsvFile(null);
-        const fileInput = document.getElementById('structured-csv-upload');
-        if (fileInput) fileInput.value = '';
+        const result = parseStructuredCSVText(ev.target?.result || '');
+        applyStructuredCSVResult(result, true);
       } catch (err) {
-        setStructuredCsvUploadResult({ success: false, message: err.message || 'Failed to parse CSV' });
-      } finally {
-        setStructuredCsvUploading(false);
+        applyStructuredCSVResult({ success: false, message: err.message || 'Failed to parse CSV' });
       }
     };
-    reader.readAsText(structuredCsvFile);
+    reader.readAsText(structuredCsvFile, 'UTF-8');
   };
 
   const handleStructuredWritingCSVFileChange = (e) => {
@@ -1675,38 +1738,59 @@ export function QuestionEditor() {
                       )}
                     </Button>
                   </div>
+                  {(() => {
+                    const raw = structuredForm.mcqs || [];
+                    const count = raw.filter((mcq) =>
+                      (mcq.question || '').trim() &&
+                      (mcq.optionA || '').trim() &&
+                      (mcq.optionB || '').trim() &&
+                      (mcq.optionC || '').trim() &&
+                      (mcq.optionD || '').trim()
+                    ).length;
+                    return count > 0 ? (
+                      <p className="text-sm text-green-700 font-medium mt-2">✓ {count} MCQ(s) loaded from CSV — enter paragraph above and click &quot;Add Structured Question&quot;.</p>
+                    ) : (
+                      <p className="text-sm text-amber-700 mt-2">No MCQs loaded yet. Select a CSV file (it loads automatically), or click <strong>Upload CSV</strong> if you already selected one.</p>
+                    );
+                  })()}
                   <Button
                     onClick={async () => {
                       if (!structuredForm.paragraph?.trim()) {
                         alert('Please enter the paragraph');
                         return;
                       }
-                      if (!structuredForm.mcqs?.length) {
-                        alert('Please upload a CSV with at least one MCQ row.');
-                        return;
-                      }
                       const numToLetter = { '1': 'A', '2': 'B', '3': 'C', '4': 'D' };
-                      for (const mcq of structuredForm.mcqs) {
-                        if (!mcq.question?.trim() || !mcq.optionA?.trim() || !mcq.optionB?.trim() || !mcq.optionC?.trim() || !mcq.optionD?.trim()) {
-                          alert('Each MCQ must have question and all options (Option A–D). Check your CSV has columns: Question, Option A, Option B, Option C, Option D, Answer.');
-                          return;
-                        }
-                        const ans = String(mcq.answer || '').trim().toUpperCase();
-                        if (!['A', 'B', 'C', 'D', '1', '2', '3', '4'].includes(ans)) {
-                          alert('Each MCQ must have a correct answer: A/B/C/D or 1/2/3/4.');
-                          return;
-                        }
+                      const normalizeAnswer = (a) => {
+                        const s = String(a ?? '').trim();
+                        if (numToLetter[s]) return numToLetter[s];
+                        const u = s.toUpperCase();
+                        return ['A','B','C','D'].includes(u) ? u : 'A';
+                      };
+                      const raw = (structuredForm.mcqs || []);
+                      const validMcqs = raw
+                        .map((mcq) => ({
+                          ...mcq,
+                          question: (mcq.question || '').trim(),
+                          optionA: (mcq.optionA || '').trim(),
+                          optionB: (mcq.optionB || '').trim(),
+                          optionC: (mcq.optionC || '').trim(),
+                          optionD: (mcq.optionD || '').trim(),
+                          answer: normalizeAnswer(mcq.answer),
+                        }))
+                        .filter((mcq) => mcq.question && mcq.optionA && mcq.optionB && mcq.optionC && mcq.optionD);
+                      if (validMcqs.length === 0) {
+                        alert('No MCQs loaded. Select a CSV file (it loads automatically when you choose it), wait for the green success message, then enter the paragraph and click Add Structured Question. CSV must have: Question, Option A, Option B, Option C, Option D, Answer (1–4 or A–D).');
+                        return;
                       }
                       try {
                         const adminSecret = getAdminSecret();
                         const questionId = structuredForm.id || generateStructuredAutoId();
-                        const normalizeAnswer = (a) => numToLetter[String(a).trim()] || (['A','B','C','D'].includes(String(a).trim().toUpperCase()) ? String(a).trim().toUpperCase() : 'A');
                         await structuredQuestionAPI.create({
                           id: questionId,
                           title: structuredForm.title || null,
                           paragraph: structuredForm.paragraph.trim(),
                           category: structuredForm.category || null,
-                          mcqs: structuredForm.mcqs.map((mcq, index) => ({
+                          mcqs: validMcqs.map((mcq, index) => ({
                             ...mcq,
                             answer: normalizeAnswer(mcq.answer),
                             order: index,
