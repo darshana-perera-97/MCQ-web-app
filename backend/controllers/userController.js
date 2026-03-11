@@ -9,6 +9,7 @@ import { StructuredWritingModel } from '../models/StructuredWritingModel.js';
 import { v4 as uuidv4 } from 'uuid';
 import { sendOTPEmail, sendApprovalEmail } from '../services/emailService.js';
 import { sendWhatsAppMessage, getWhatsAppStatus } from '../services/whatsappService.js';
+import { PLATFORM_URL } from '../config/constants.js';
 
 const userModel = new UserModel();
 const settingsModel = new SettingsModel();
@@ -55,7 +56,8 @@ async function sendOTP(email, name, otp, phone = null) {
       if (whatsappEnabled) {
         const whatsappStatus = getWhatsAppStatus();
         if (whatsappStatus.isConnected) {
-          const otpMessage = `Hello ${name},\n\nYour OTP for email verification is: *${otp}*\n\nThis OTP will expire in 10 minutes.\n\nPlease do not share this OTP with anyone.`;
+          const loginUrl = `${PLATFORM_URL}/login`;
+          const otpMessage = `Hello ${name},\n\nYour OTP for email verification is: *${otp}*\n\nThis OTP will expire in 10 minutes.\n\n📧 Email: ${email}\n🔗 Login URL: ${loginUrl}\n\nPlease do not share this OTP with anyone.`;
           await sendWhatsAppMessage(phoneToUse, otpMessage);
           results.whatsapp.sent = true;
         } else {
@@ -102,7 +104,8 @@ async function sendApprovalNotification(email, name, phone = null) {
       if (whatsappEnabled) {
         const whatsappStatus = getWhatsAppStatus();
         if (whatsappStatus.isConnected) {
-          const approvalMessage = `Hello ${name},\n\n🎉 *Great News!*\n\nYour account has been approved by the administrator. You can now log in and start using the Learning Management System.\n\nWe're excited to have you on board!\n\nIf you have any questions or need assistance, please don't hesitate to contact our support team.`;
+          const loginUrl = `${PLATFORM_URL}/login`;
+          const approvalMessage = `Hello ${name},\n\n🎉 *Great News!*\n\nYour account has been approved by the administrator. You can now log in and start using the Learning Management System.\n\n📧 Email: ${email}\n🔗 Login URL: ${loginUrl}\n\nWe're excited to have you on board!\n\nIf you have any questions or need assistance, please don't hesitate to contact our support team.`;
           await sendWhatsAppMessage(phoneToUse, approvalMessage);
           results.whatsapp.sent = true;
         } else {
