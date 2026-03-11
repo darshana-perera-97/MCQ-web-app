@@ -351,7 +351,8 @@ export function QuestionEditor() {
     const reader = new FileReader();
     reader.onload = (e) => {
       try {
-        const text = e.target?.result || '';
+        let text = e.target?.result || '';
+        if (text.charCodeAt(0) === 0xfeff) text = text.slice(1);
         const lines = text.split(/\r?\n/).filter((l) => l.trim());
         if (lines.length < 2) {
           setStructuredCsvUploadResult({ success: false, message: 'CSV must have a header row and at least one data row' });
@@ -359,14 +360,15 @@ export function QuestionEditor() {
           return;
         }
         const headerLine = parseCSVLine(lines[0]);
-        const headers = headerLine.map((h) => h.trim().toLowerCase().replace(/\s+/g, ''));
-        const questionIdx = headers.indexOf('question');
-        const optionAIdx = headers.indexOf('optiona');
-        const optionBIdx = headers.indexOf('optionb');
-        const optionCIdx = headers.indexOf('optionc');
-        const optionDIdx = headers.indexOf('optiond');
-        const answerIdx = headers.indexOf('answer');
-        const categoryIdx = headers.indexOf('category');
+        const normalizeHeader = (h) => h.trim().toLowerCase().replace(/\s+/g, '').replace(/_/g, '').replace(/\ufeff/g, '');
+        const headers = headerLine.map(normalizeHeader);
+        const questionIdx = headers.findIndex((h) => h === 'question');
+        const optionAIdx = headers.findIndex((h) => h === 'optiona');
+        const optionBIdx = headers.findIndex((h) => h === 'optionb');
+        const optionCIdx = headers.findIndex((h) => h === 'optionc');
+        const optionDIdx = headers.findIndex((h) => h === 'optiond');
+        const answerIdx = headers.findIndex((h) => h === 'answer');
+        const categoryIdx = headers.findIndex((h) => h === 'category');
         const required = [questionIdx, optionAIdx, optionBIdx, optionCIdx, optionDIdx, answerIdx];
         if (required.some((i) => i === -1)) {
           setStructuredCsvUploadResult({
@@ -386,10 +388,13 @@ export function QuestionEditor() {
           const optionB = getVal(optionBIdx);
           const optionC = getVal(optionCIdx);
           const optionD = getVal(optionDIdx);
-          let answer = getVal(answerIdx).toUpperCase().replace(/[^ABCD]/g, '') || 'A';
-          if (!['A', 'B', 'C', 'D'].includes(answer)) answer = 'A';
+          let answerRaw = getVal(answerIdx).trim();
+          let answer = answerRaw.toUpperCase().replace(/[^ABCD1234]/g, '');
+          const numToLetter = { '1': 'A', '2': 'B', '3': 'C', '4': 'D' };
+          if (numToLetter[answer]) answer = numToLetter[answer];
+          else if (!['A', 'B', 'C', 'D'].includes(answer)) answer = 'A';
           if (!question || !optionA || !optionB || !optionC || !optionD) {
-            errors.push(`Row ${r + 1}: missing required fields`);
+            errors.push(`Row ${r + 1}: missing required fields (question, optionA–D)`);
             continue;
           }
           parsedMcqs.push({
@@ -1680,25 +1685,32 @@ export function QuestionEditor() {
                         alert('Please upload a CSV with at least one MCQ row.');
                         return;
                       }
+                      const numToLetter = { '1': 'A', '2': 'B', '3': 'C', '4': 'D' };
                       for (const mcq of structuredForm.mcqs) {
                         if (!mcq.question?.trim() || !mcq.optionA?.trim() || !mcq.optionB?.trim() || !mcq.optionC?.trim() || !mcq.optionD?.trim()) {
-                          alert('Each MCQ must have question and all options. Re-upload a valid CSV.');
+                          alert('Each MCQ must have question and all options (Option A–D). Check your CSV has columns: Question, Option A, Option B, Option C, Option D, Answer.');
                           return;
                         }
-                        if (!mcq.answer || !['A', 'B', 'C', 'D'].includes(mcq.answer)) {
-                          alert('Each MCQ must have a correct answer A, B, C, or D.');
+                        const ans = String(mcq.answer || '').trim().toUpperCase();
+                        if (!['A', 'B', 'C', 'D', '1', '2', '3', '4'].includes(ans)) {
+                          alert('Each MCQ must have a correct answer: A/B/C/D or 1/2/3/4.');
                           return;
                         }
                       }
                       try {
                         const adminSecret = getAdminSecret();
                         const questionId = structuredForm.id || generateStructuredAutoId();
+                        const normalizeAnswer = (a) => numToLetter[String(a).trim()] || (['A','B','C','D'].includes(String(a).trim().toUpperCase()) ? String(a).trim().toUpperCase() : 'A');
                         await structuredQuestionAPI.create({
                           id: questionId,
                           title: structuredForm.title || null,
                           paragraph: structuredForm.paragraph.trim(),
                           category: structuredForm.category || null,
-                          mcqs: structuredForm.mcqs.map((mcq, index) => ({ ...mcq, order: index })),
+                          mcqs: structuredForm.mcqs.map((mcq, index) => ({
+                            ...mcq,
+                            answer: normalizeAnswer(mcq.answer),
+                            order: index,
+                          })),
                         }, adminSecret);
                         setStructuredForm({
                           id: generateStructuredAutoId(),
