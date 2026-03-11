@@ -32,17 +32,21 @@ const mcqImageStorage = multer.diskStorage({
   }
 });
 
-// File filter - only images
+// File filter - only images (including webp for modern browsers)
 const fileFilter = (req, file, cb) => {
-  const allowedTypes = /jpeg|jpg|png|gif/;
-  const extname = allowedTypes.test(path.extname(file.originalname).toLowerCase());
-  const mimetype = allowedTypes.test(file.mimetype);
+  const allowedExts = /\.(jpeg|jpg|png|gif|webp)$/i;
+  const allowedMimetypes = /^image\/(jpeg|jpg|png|gif|webp)$/;
+  const ext = path.extname(file.originalname || '').toLowerCase();
+  const hasValidExt = allowedExts.test(ext);
+  const hasValidMimetype = file.mimetype && allowedMimetypes.test(file.mimetype);
 
-  if (mimetype && extname) {
+  if (hasValidExt && hasValidMimetype) {
     return cb(null, true);
-  } else {
-    cb(new Error('Only image files are allowed (jpeg, jpg, png, gif)'));
   }
+  if (hasValidExt && (!file.mimetype || file.mimetype === 'application/octet-stream')) {
+    return cb(null, true);
+  }
+  cb(new Error('Only image files are allowed (jpeg, jpg, png, gif, webp)'));
 };
 
 export const upload = multer({
