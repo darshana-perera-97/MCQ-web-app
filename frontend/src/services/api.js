@@ -418,3 +418,47 @@ export const summaryAPI = {
   }),
 };
 
+// Structured Question API
+export const structuredQuestionAPI = {
+  getAll: () => apiRequest('/structured-questions'),
+
+  getById: (questionId) => apiRequest(`/structured-questions/${questionId}`),
+
+  create: (questionData, adminSecret) => apiRequest('/structured-questions', {
+    method: 'POST',
+    body: JSON.stringify(questionData),
+    adminSecret,
+  }),
+
+  update: (questionId, updates, adminSecret) => apiRequest(`/structured-questions/${questionId}`, {
+    method: 'PUT',
+    body: JSON.stringify(updates),
+    adminSecret,
+  }),
+
+  delete: (questionId, adminSecret) => apiRequest(`/structured-questions/${questionId}`, {
+    method: 'DELETE',
+    adminSecret,
+  }),
+};
+
+// Structured Writing API (paragraph + Q&A pairs)
+export const structuredWritingAPI = {
+  getAll: () => apiRequest('/structured-writings'),
+  getById: (id) => apiRequest(`/structured-writings/${id}`),
+  create: (data, adminSecret) => apiRequest('/structured-writings', {
+    method: 'POST',
+    body: JSON.stringify(data),
+    adminSecret,
+  }),
+  update: (id, updates, adminSecret) => apiRequest(`/structured-writings/${id}`, {
+    method: 'PUT',
+    body: JSON.stringify(updates),
+    adminSecret,
+  }),
+  delete: (id, adminSecret) => apiRequest(`/structured-writings/${id}`, {
+    method: 'DELETE',
+    adminSecret,
+  }),
+};
+

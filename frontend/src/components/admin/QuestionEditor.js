@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { mcqAPI, essayAPI, summaryAPI, getAdminSecret } from '../../services/api';
+import { mcqAPI, essayAPI, summaryAPI, structuredQuestionAPI, structuredWritingAPI, getAdminSecret } from '../../services/api';
 import { BACKEND_URL } from '../../config/api';
 import { Button } from '../ui/button';
 import { Input } from '../ui/input';
@@ -19,12 +19,20 @@ export function QuestionEditor() {
   const [questions, setQuestions] = useState([]);
   const [essays, setEssays] = useState([]);
   const [summaries, setSummaries] = useState([]);
+  const [structuredQuestions, setStructuredQuestions] = useState([]);
+  const [structuredWritings, setStructuredWritings] = useState([]);
   const [searchQuery, setSearchQuery] = useState('');
-  const [questionTypeFilter, setQuestionTypeFilter] = useState('all'); // 'all', 'mcq', 'essay', 'summary'
+  const [questionTypeFilter, setQuestionTypeFilter] = useState('all'); // 'all', 'mcq', 'essay', 'summary', 'structured', 'structuredWriting'
   const [loading, setLoading] = useState(true);
   const [csvFile, setCsvFile] = useState(null);
   const [csvUploading, setCsvUploading] = useState(false);
   const [csvUploadResult, setCsvUploadResult] = useState(null);
+  const [structuredCsvFile, setStructuredCsvFile] = useState(null);
+  const [structuredCsvUploading, setStructuredCsvUploading] = useState(false);
+  const [structuredCsvUploadResult, setStructuredCsvUploadResult] = useState(null);
+  const [structuredWritingCsvFile, setStructuredWritingCsvFile] = useState(null);
+  const [structuredWritingCsvUploading, setStructuredWritingCsvUploading] = useState(false);
+  const [structuredWritingCsvUploadResult, setStructuredWritingCsvUploadResult] = useState(null);
   const [selectedQuestion, setSelectedQuestion] = useState(null);
   const [selectedQuestionType, setSelectedQuestionType] = useState(null); // 'mcq', 'essay', or 'summary'
   const [selectedItems, setSelectedItems] = useState([]); // Array of { id, type } objects
@@ -43,6 +51,21 @@ export function QuestionEditor() {
     const yymmdd = now.toISOString().slice(2, 10).replace(/-/g, '');
     const random = Math.floor(Math.random() * 1000).toString().padStart(3, '0');
     return `ESSAY-${yymmdd}-${random}`;
+  };
+
+  // Generate auto ID for Structured Question
+  const generateStructuredAutoId = () => {
+    const now = new Date();
+    const yymmdd = now.toISOString().slice(2, 10).replace(/-/g, '');
+    const random = Math.floor(Math.random() * 1000).toString().padStart(3, '0');
+    return `STRUCT-${yymmdd}-${random}`;
+  };
+
+  const generateStructuredWritingAutoId = () => {
+    const now = new Date();
+    const yymmdd = now.toISOString().slice(2, 10).replace(/-/g, '');
+    const random = Math.floor(Math.random() * 1000).toString().padStart(3, '0');
+    return `WRITE-${yymmdd}-${random}`;
   };
 
   // MCQ Form State
@@ -73,7 +96,37 @@ export function QuestionEditor() {
     paragraphs: [''],
   });
 
+  // Structured Question Form State
+  const [structuredForm, setStructuredForm] = useState({
+    id: '',
+    title: '',
+    paragraph: '',
+    category: '',
+    mcqs: [
+      {
+        id: '',
+        question: '',
+        optionA: '',
+        optionB: '',
+        optionC: '',
+        optionD: '',
+        answer: 'A',
+        order: 0
+      }
+    ],
+  });
+
+  // Structured Writing Form State (paragraph + Q&A pairs)
+  const [structuredWritingForm, setStructuredWritingForm] = useState({
+    id: '',
+    title: '',
+    paragraph: '',
+    category: '',
+    qaPairs: [{ id: '', question: '', answer: '', order: 0 }],
+  });
+
   const [activeTab, setActiveTab] = useState('add');
+  const [addSubTab, setAddSubTab] = useState('mcq');
 
   useEffect(() => {
     loadQuestions();
@@ -88,6 +141,8 @@ export function QuestionEditor() {
       loadQuestions();
       loadEssays();
       loadSummaries();
+      loadStructuredQuestions();
+      loadStructuredWritings();
     }
   }, [activeTab]);
 
@@ -130,6 +185,26 @@ export function QuestionEditor() {
     }
   };
 
+  const loadStructuredQuestions = async () => {
+    try {
+      const response = await structuredQuestionAPI.getAll();
+      setStructuredQuestions(response.structuredQuestions || []);
+    } catch (err) {
+      console.error('Error loading structured questions:', err);
+      setStructuredQuestions([]);
+    }
+  };
+
+  const loadStructuredWritings = async () => {
+    try {
+      const response = await structuredWritingAPI.getAll();
+      setStructuredWritings(response.structuredWritings || []);
+    } catch (err) {
+      console.error('Error loading structured writings:', err);
+      setStructuredWritings([]);
+    }
+  };
+
   const filteredQuestions = questions.filter(
     (q) =>
       q.question?.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -142,6 +217,22 @@ export function QuestionEditor() {
       e.question?.toLowerCase().includes(searchQuery.toLowerCase()) ||
       e.id?.toLowerCase().includes(searchQuery.toLowerCase()) ||
       (e.category && e.category.toLowerCase().includes(searchQuery.toLowerCase()))
+  );
+
+  const filteredStructuredQuestions = structuredQuestions.filter(
+    (s) =>
+      s.title?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      s.id?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      s.paragraph?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      (s.category && s.category.toLowerCase().includes(searchQuery.toLowerCase()))
+  );
+
+  const filteredStructuredWritings = structuredWritings.filter(
+    (s) =>
+      s.title?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      s.id?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      s.paragraph?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      (s.category && s.category.toLowerCase().includes(searchQuery.toLowerCase()))
   );
 
   // Get combined filtered results based on question type filter
@@ -157,13 +248,19 @@ export function QuestionEditor() {
           s.id?.toLowerCase().includes(searchQuery.toLowerCase())
       );
       return { items: filteredSummaries, type: 'summary' };
+    } else if (questionTypeFilter === 'structured') {
+      return { items: filteredStructuredQuestions, type: 'structured' };
+    } else if (questionTypeFilter === 'structuredWriting') {
+      return { items: filteredStructuredWritings, type: 'structuredWriting' };
     } else {
       // Combine all types
       return { 
         items: [
           ...filteredQuestions.map(q => ({ ...q, _type: 'mcq' })),
           ...filteredEssays.map(e => ({ ...e, _type: 'essay' })),
-          ...summaries.map(s => ({ ...s, _type: 'summary' }))
+          ...summaries.map(s => ({ ...s, _type: 'summary' })),
+          ...filteredStructuredQuestions.map(s => ({ ...s, _type: 'structured' })),
+          ...filteredStructuredWritings.map(s => ({ ...s, _type: 'structuredWriting' }))
         ], 
         type: 'all' 
       };
@@ -203,6 +300,201 @@ export function QuestionEditor() {
       setCsvFile(file);
       setCsvUploadResult(null);
     }
+  };
+
+  // Parse CSV line handling quoted fields (commas inside quotes)
+  const parseCSVLine = (line) => {
+    const fields = [];
+    let i = 0;
+    while (i < line.length) {
+      if (line[i] === '"') {
+        i += 1;
+        let end = i;
+        while (end < line.length && (line[end] !== '"' || (line[end + 1] === '"' && end + 1 < line.length))) {
+          if (line[end] === '"' && line[end + 1] === '"') end += 2;
+          else end += 1;
+        }
+        fields.push(line.slice(i, end).replace(/""/g, '"'));
+        i = end + 1;
+        if (line[i] === ',') i += 1;
+      } else {
+        let end = line.indexOf(',', i);
+        if (end === -1) end = line.length;
+        fields.push(line.slice(i, end).trim());
+        i = end + 1;
+      }
+    }
+    return fields;
+  };
+
+  const handleStructuredCSVFileChange = (e) => {
+    const file = e.target.files[0];
+    if (file) {
+      if (!file.name.toLowerCase().endsWith('.csv')) {
+        alert('Please select a CSV file');
+        return;
+      }
+      setStructuredCsvFile(file);
+      setStructuredCsvUploadResult(null);
+    }
+  };
+
+  const handleStructuredCSVUpload = async () => {
+    if (!structuredCsvFile) {
+      alert('Please select a CSV file');
+      return;
+    }
+    const adminSecret = getAdminSecret();
+    if (!adminSecret) {
+      setStructuredCsvUploadResult({ success: false, message: 'Admin authentication required' });
+      return;
+    }
+    setStructuredCsvUploading(true);
+    setStructuredCsvUploadResult(null);
+    const errors = [];
+    let created = 0;
+    try {
+      const text = await structuredCsvFile.text();
+      const lines = text.split(/\r?\n/).filter((l) => l.trim());
+      if (lines.length < 2) {
+        setStructuredCsvUploadResult({ success: false, message: 'CSV must have a header row and at least one data row' });
+        setStructuredCsvUploading(false);
+        return;
+      }
+      const headerLine = parseCSVLine(lines[0]);
+      const headers = headerLine.map((h) => h.trim().toLowerCase().replace(/\s+/g, ''));
+      const questionIdx = headers.indexOf('question');
+      const optionAIdx = headers.indexOf('optiona');
+      const optionBIdx = headers.indexOf('optionb');
+      const optionCIdx = headers.indexOf('optionc');
+      const optionDIdx = headers.indexOf('optiond');
+      const answerIdx = headers.indexOf('answer');
+      const categoryIdx = headers.indexOf('category');
+      const required = [questionIdx, optionAIdx, optionBIdx, optionCIdx, optionDIdx, answerIdx];
+      if (required.some((i) => i === -1)) {
+        setStructuredCsvUploadResult({
+          success: false,
+          message: 'CSV must include columns: question, optionA, optionB, optionC, optionD, answer. Optional: category',
+        });
+        setStructuredCsvUploading(false);
+        return;
+      }
+      for (let r = 1; r < lines.length; r++) {
+        const values = parseCSVLine(lines[r]);
+        const getVal = (idx) => (idx >= 0 && idx < values.length ? values[idx].trim() : '');
+        const question = getVal(questionIdx);
+        const optionA = getVal(optionAIdx);
+        const optionB = getVal(optionBIdx);
+        const optionC = getVal(optionCIdx);
+        const optionD = getVal(optionDIdx);
+        let answer = getVal(answerIdx).toUpperCase().replace(/[^ABCD]/g, '') || 'A';
+        if (!['A', 'B', 'C', 'D'].includes(answer)) answer = 'A';
+        const category = categoryIdx >= 0 ? getVal(categoryIdx) : '';
+        if (!question || !optionA || !optionB || !optionC || !optionD) {
+          errors.push(`Row ${r + 1}: missing required fields`);
+          continue;
+        }
+        try {
+          await structuredQuestionAPI.create(
+            {
+              title: category || null,
+              paragraph: question,
+              category: category || null,
+              mcqs: [{ question, optionA, optionB, optionC, optionD, answer, order: 0 }],
+            },
+            adminSecret
+          );
+          created += 1;
+        } catch (err) {
+          errors.push(`Row ${r + 1}: ${err.message || 'Failed to create'}`);
+        }
+      }
+      setStructuredCsvUploadResult({
+        success: errors.length === 0 || created > 0,
+        message: created > 0 ? `Created ${created} structured question(s).` : 'No rows could be created.',
+        created,
+        errors: errors.length > 0 ? errors : undefined,
+      });
+      if (created > 0) {
+        loadStructuredQuestions();
+        setStructuredCsvFile(null);
+        const fileInput = document.getElementById('structured-csv-upload');
+        if (fileInput) fileInput.value = '';
+      }
+    } catch (err) {
+      setStructuredCsvUploadResult({ success: false, message: err.message || 'Failed to parse or upload CSV' });
+    } finally {
+      setStructuredCsvUploading(false);
+    }
+  };
+
+  const handleStructuredWritingCSVFileChange = (e) => {
+    const file = e.target.files[0];
+    if (file) {
+      if (!file.name.toLowerCase().endsWith('.csv')) {
+        alert('Please select a CSV file');
+        return;
+      }
+      setStructuredWritingCsvFile(file);
+      setStructuredWritingCsvUploadResult(null);
+    }
+  };
+
+  const handleStructuredWritingCSVUpload = () => {
+    if (!structuredWritingCsvFile) {
+      setStructuredWritingCsvUploadResult({ success: false, message: 'Please select a CSV file' });
+      return;
+    }
+    setStructuredWritingCsvUploading(true);
+    setStructuredWritingCsvUploadResult(null);
+    const reader = new FileReader();
+    reader.onload = async (e) => {
+      try {
+        const text = e.target?.result || '';
+        const lines = text.split(/\r?\n/).filter((l) => l.trim());
+        if (lines.length < 2) {
+          setStructuredWritingCsvUploadResult({ success: false, message: 'CSV must have header and at least one data row' });
+          setStructuredWritingCsvUploading(false);
+          return;
+        }
+        const headers = parseCSVLine(lines[0]).map((h) => h.trim().toLowerCase().replace(/\s+/g, ''));
+        const questionIdx = headers.indexOf('question');
+        const answerIdx = headers.indexOf('answer');
+        if (questionIdx === -1 || answerIdx === -1) {
+          setStructuredWritingCsvUploadResult({ success: false, message: 'CSV must include columns: question, answer' });
+          setStructuredWritingCsvUploading(false);
+          return;
+        }
+        const newPairs = [];
+        for (let r = 1; r < lines.length; r++) {
+          const values = parseCSVLine(lines[r]);
+          const getVal = (idx) => (idx >= 0 && idx < values.length ? values[idx].trim() : '');
+          const question = getVal(questionIdx);
+          const answer = getVal(answerIdx);
+          if (question || answer) {
+            newPairs.push({ id: '', question, answer, order: structuredWritingForm.qaPairs.length + newPairs.length });
+          }
+        }
+        if (newPairs.length === 0) {
+          setStructuredWritingCsvUploadResult({ success: false, message: 'No valid question,answer rows found' });
+          setStructuredWritingCsvUploading(false);
+          return;
+        }
+        setStructuredWritingForm((prev) => ({
+          ...prev,
+          qaPairs: [...prev.qaPairs.filter((qa) => qa.question || qa.answer), ...newPairs],
+        }));
+        setStructuredWritingCsvUploadResult({ success: true, message: `Added ${newPairs.length} question(s) from CSV. Fill paragraph and click Add.` });
+        setStructuredWritingCsvFile(null);
+        const fileInput = document.getElementById('structured-writing-csv-upload');
+        if (fileInput) fileInput.value = '';
+      } catch (err) {
+        setStructuredWritingCsvUploadResult({ success: false, message: err.message || 'Failed to parse CSV' });
+      } finally {
+        setStructuredWritingCsvUploading(false);
+      }
+    };
+    reader.readAsText(structuredWritingCsvFile);
   };
 
   const handleCSVUpload = async () => {
@@ -306,6 +598,12 @@ export function QuestionEditor() {
       } else if (type === 'summary') {
         await summaryAPI.delete(id, adminSecret);
         await loadSummaries();
+      } else if (type === 'structured') {
+        await structuredQuestionAPI.delete(id, adminSecret);
+        await loadStructuredQuestions();
+      } else if (type === 'structuredWriting') {
+        await structuredWritingAPI.delete(id, adminSecret);
+        await loadStructuredWritings();
       } else {
         await mcqAPI.delete(id, adminSecret);
         await loadQuestions();
@@ -340,6 +638,10 @@ export function QuestionEditor() {
             await essayAPI.delete(item.id, adminSecret);
           } else if (item.type === 'summary') {
             await summaryAPI.delete(item.id, adminSecret);
+          } else if (item.type === 'structured') {
+            await structuredQuestionAPI.delete(item.id, adminSecret);
+          } else if (item.type === 'structuredWriting') {
+            await structuredWritingAPI.delete(item.id, adminSecret);
           } else {
             await mcqAPI.delete(item.id, adminSecret);
           }
@@ -354,6 +656,8 @@ export function QuestionEditor() {
       await loadQuestions();
       await loadEssays();
       await loadSummaries();
+      await loadStructuredQuestions();
+      await loadStructuredWritings();
       
       // Clear selections
       setSelectedItems([]);
@@ -418,6 +722,13 @@ export function QuestionEditor() {
       <div className="mb-8">
         <h1 className="text-3xl font-semibold text-gray-900 mb-2">Question Editor</h1>
         <p className="text-gray-600">Create and manage MCQ and essay type questions</p>
+        <button
+          type="button"
+          onClick={() => { setActiveTab('add'); setAddSubTab('structured'); }}
+          className="mt-3 text-sm font-medium text-[#667eea] hover:text-[#764ba2] hover:underline transition-colors"
+        >
+          Add Structured Question
+        </button>
       </div>
 
       <Tabs defaultValue="add" className="space-y-6" onValueChange={setActiveTab}>
@@ -440,7 +751,7 @@ export function QuestionEditor() {
 
         {/* Add Question Tab */}
         <TabsContent value="add" className="space-y-6">
-          <Tabs defaultValue="mcq" className="space-y-6">
+          <Tabs value={addSubTab} onValueChange={setAddSubTab} className="space-y-6">
             <TabsList className="bg-gray-50 border border-gray-200 p-1.5 rounded-xl w-full max-w-3xl">
               <TabsTrigger 
                 value="mcq" 
@@ -466,6 +777,18 @@ export function QuestionEditor() {
                 className="flex-1 rounded-lg data-[state=active]:bg-white data-[state=active]:shadow-sm data-[state=active]:text-[#667eea] data-[state=active]:font-semibold transition-all"
               >
                 Summarize
+              </TabsTrigger>
+              <TabsTrigger 
+                value="structured" 
+                className="flex-1 rounded-lg data-[state=active]:bg-white data-[state=active]:shadow-sm data-[state=active]:text-[#667eea] data-[state=active]:font-semibold transition-all"
+              >
+                Structured-QUEs-MCQ
+              </TabsTrigger>
+              <TabsTrigger 
+                value="structured-writing" 
+                className="flex-1 rounded-lg data-[state=active]:bg-white data-[state=active]:shadow-sm data-[state=active]:text-[#667eea] data-[state=active]:font-semibold transition-all"
+              >
+                Structured Writing
               </TabsTrigger>
             </TabsList>
 
@@ -950,6 +1273,565 @@ export function QuestionEditor() {
                 </div>
               </div>
             </TabsContent>
+
+            {/* Structured Question Form */}
+            <TabsContent value="structured" className="mt-6">
+              <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-6 lg:p-8">
+                <div className="mb-6 pb-4 border-b border-gray-200">
+                  <h3 className="text-2xl font-bold text-gray-900 mb-2">Add Structured Questions MCQ</h3>
+                  <p className="text-sm text-gray-600">Create a paragraph-based MCQ set</p>
+                </div>
+                <div className="space-y-5">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+                    <div className="space-y-2">
+                      <Label htmlFor="structured-id">Question ID (Auto-generated)</Label>
+                      <Input
+                        id="structured-id"
+                        placeholder="Auto-generated"
+                        value={structuredForm.id}
+                        readOnly
+                        className="rounded-xl border-gray-200 bg-gray-50 cursor-not-allowed"
+                      />
+                      <p className="text-xs text-gray-500">ID is automatically generated</p>
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="structured-title">Title (Optional)</Label>
+                      <Input
+                        id="structured-title"
+                        placeholder="e.g., Incident Analysis, Case Study, etc."
+                        value={structuredForm.title}
+                        onChange={(e) => setStructuredForm({ ...structuredForm, title: e.target.value })}
+                        className="rounded-xl border-gray-200"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="structured-category">Category (Optional)</Label>
+                    <Input
+                      id="structured-category"
+                      placeholder="e.g., Programming, Theory, etc."
+                      value={structuredForm.category}
+                      onChange={(e) => setStructuredForm({ ...structuredForm, category: e.target.value })}
+                      className="rounded-xl border-gray-200"
+                    />
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="structured-paragraph">Paragraph *</Label>
+                    <Textarea
+                      id="structured-paragraph"
+                      placeholder="Enter the paragraph or incident description..."
+                      value={structuredForm.paragraph}
+                      onChange={(e) => setStructuredForm({ ...structuredForm, paragraph: e.target.value })}
+                      className="rounded-xl border-gray-200 min-h-[200px] resize-none"
+                      rows={8}
+                    />
+                    <p className="text-xs text-gray-500">This paragraph will be shown to students on the left side</p>
+                  </div>
+
+                  <div className="space-y-4">
+                    <div className="flex items-center justify-between">
+                      <Label>MCQ Questions *</Label>
+                      <Button
+                        type="button"
+                        onClick={() => {
+                          setStructuredForm({
+                            ...structuredForm,
+                            mcqs: [
+                              ...structuredForm.mcqs,
+                              {
+                                id: '',
+                                question: '',
+                                optionA: '',
+                                optionB: '',
+                                optionC: '',
+                                optionD: '',
+                                answer: 'A',
+                                order: structuredForm.mcqs.length
+                              }
+                            ]
+                          });
+                        }}
+                        variant="outline"
+                        size="sm"
+                        className="rounded-lg"
+                      >
+                        <Plus className="w-4 h-4 mr-2" />
+                        Add MCQ
+                      </Button>
+                    </div>
+                    {structuredForm.mcqs.map((mcq, index) => (
+                      <div key={index} className="p-4 border border-gray-200 rounded-xl bg-gray-50">
+                        <div className="flex items-center justify-between mb-3">
+                          <Label className="text-base font-semibold">MCQ {index + 1}</Label>
+                          {structuredForm.mcqs.length > 1 && (
+                            <Button
+                              type="button"
+                              onClick={() => {
+                                const newMcqs = structuredForm.mcqs.filter((_, i) => i !== index);
+                                setStructuredForm({ ...structuredForm, mcqs: newMcqs });
+                              }}
+                              variant="ghost"
+                              size="sm"
+                              className="text-red-600 hover:text-red-700 hover:bg-red-50"
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </Button>
+                          )}
+                        </div>
+                        <div className="space-y-3">
+                          <div className="space-y-2">
+                            <Label htmlFor={`mcq-question-${index}`}>Question *</Label>
+                            <Input
+                              id={`mcq-question-${index}`}
+                              placeholder="Enter the question..."
+                              value={mcq.question}
+                              onChange={(e) => {
+                                const newMcqs = [...structuredForm.mcqs];
+                                newMcqs[index].question = e.target.value;
+                                setStructuredForm({ ...structuredForm, mcqs: newMcqs });
+                              }}
+                              className="rounded-xl border-gray-200"
+                            />
+                          </div>
+                          <div className="grid grid-cols-2 gap-3">
+                            <div className="space-y-2">
+                              <Label htmlFor={`mcq-optionA-${index}`}>Option A *</Label>
+                              <Input
+                                id={`mcq-optionA-${index}`}
+                                placeholder="Option A"
+                                value={mcq.optionA}
+                                onChange={(e) => {
+                                  const newMcqs = [...structuredForm.mcqs];
+                                  newMcqs[index].optionA = e.target.value;
+                                  setStructuredForm({ ...structuredForm, mcqs: newMcqs });
+                                }}
+                                className="rounded-xl border-gray-200"
+                              />
+                            </div>
+                            <div className="space-y-2">
+                              <Label htmlFor={`mcq-optionB-${index}`}>Option B *</Label>
+                              <Input
+                                id={`mcq-optionB-${index}`}
+                                placeholder="Option B"
+                                value={mcq.optionB}
+                                onChange={(e) => {
+                                  const newMcqs = [...structuredForm.mcqs];
+                                  newMcqs[index].optionB = e.target.value;
+                                  setStructuredForm({ ...structuredForm, mcqs: newMcqs });
+                                }}
+                                className="rounded-xl border-gray-200"
+                              />
+                            </div>
+                            <div className="space-y-2">
+                              <Label htmlFor={`mcq-optionC-${index}`}>Option C *</Label>
+                              <Input
+                                id={`mcq-optionC-${index}`}
+                                placeholder="Option C"
+                                value={mcq.optionC}
+                                onChange={(e) => {
+                                  const newMcqs = [...structuredForm.mcqs];
+                                  newMcqs[index].optionC = e.target.value;
+                                  setStructuredForm({ ...structuredForm, mcqs: newMcqs });
+                                }}
+                                className="rounded-xl border-gray-200"
+                              />
+                            </div>
+                            <div className="space-y-2">
+                              <Label htmlFor={`mcq-optionD-${index}`}>Option D *</Label>
+                              <Input
+                                id={`mcq-optionD-${index}`}
+                                placeholder="Option D"
+                                value={mcq.optionD}
+                                onChange={(e) => {
+                                  const newMcqs = [...structuredForm.mcqs];
+                                  newMcqs[index].optionD = e.target.value;
+                                  setStructuredForm({ ...structuredForm, mcqs: newMcqs });
+                                }}
+                                className="rounded-xl border-gray-200"
+                              />
+                            </div>
+                          </div>
+                          <div className="space-y-2">
+                            <Label htmlFor={`mcq-answer-${index}`}>Correct Answer *</Label>
+                            <select
+                              id={`mcq-answer-${index}`}
+                              value={mcq.answer}
+                              onChange={(e) => {
+                                const newMcqs = [...structuredForm.mcqs];
+                                newMcqs[index].answer = e.target.value;
+                                setStructuredForm({ ...structuredForm, mcqs: newMcqs });
+                              }}
+                              className="w-full px-4 py-2 rounded-xl border border-gray-300 focus:border-[#667eea] focus:ring-2 focus:ring-[#667eea]/30 focus:outline-none bg-white"
+                            >
+                              <option value="A">A</option>
+                              <option value="B">B</option>
+                              <option value="C">C</option>
+                              <option value="D">D</option>
+                            </select>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+
+                  {/* Structured Questions CSV Upload */}
+                  <div className="mt-8 pt-8 border-t border-gray-200">
+                    <h4 className="text-lg font-bold text-gray-900 mb-2">Or upload from CSV</h4>
+                    <p className="text-sm text-gray-600 mb-4">Bulk add Structured Questions MCQs from a CSV file. Each row becomes one structured question (paragraph = question text, one MCQ).</p>
+                    <div className="bg-blue-50 border border-blue-200 rounded-xl p-4 mb-4">
+                      <div className="flex items-start gap-3">
+                        <FileText className="w-5 h-5 text-blue-600 mt-0.5 flex-shrink-0" />
+                        <div className="space-y-2 text-sm">
+                          <p className="font-semibold text-blue-900">CSV format: <code className="bg-blue-100 px-1 rounded">question, optionA, optionB, optionC, optionD, answer, category</code></p>
+                          <ul className="list-disc list-inside space-y-1 text-blue-800">
+                            <li>Required columns: question, optionA, optionB, optionC, optionD, answer</li>
+                            <li>Optional: category</li>
+                            <li>Answer must be A, B, C, or D</li>
+                            <li>First row must be the header row</li>
+                          </ul>
+                          <p className="text-xs text-blue-700 mt-2">
+                            Example: <code className="bg-blue-100 px-1 rounded">&quot;Question text?&quot;,&quot;A&quot;,&quot;B&quot;,&quot;C&quot;,&quot;D&quot;,A,Category</code>
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+                    <div className="space-y-3">
+                      <Label htmlFor="structured-csv-upload">Select CSV file</Label>
+                      <label
+                        htmlFor="structured-csv-upload"
+                        className="flex flex-col items-center justify-center w-full h-32 border-2 border-gray-300 border-dashed rounded-xl cursor-pointer bg-gray-50 hover:bg-gray-100 transition-colors"
+                      >
+                        <div className="flex flex-col items-center justify-center py-4">
+                          <Upload className="w-8 h-8 mb-2 text-gray-400" />
+                          <p className="text-sm text-gray-500">
+                            <span className="font-semibold">Click to upload</span> or drag and drop
+                          </p>
+                          <p className="text-xs text-gray-500">CSV only</p>
+                          {structuredCsvFile && (
+                            <p className="text-sm text-gray-700 mt-2 font-medium">Selected: {structuredCsvFile.name}</p>
+                          )}
+                        </div>
+                        <input
+                          id="structured-csv-upload"
+                          type="file"
+                          accept=".csv"
+                          className="hidden"
+                          onChange={handleStructuredCSVFileChange}
+                          disabled={structuredCsvUploading}
+                        />
+                      </label>
+                    </div>
+                    {structuredCsvUploadResult && (
+                      <div className={`p-4 rounded-xl border ${
+                        structuredCsvUploadResult.success ? 'bg-green-50 border-green-200' : 'bg-red-50 border-red-200'
+                      }`}>
+                        <p className={`font-semibold ${structuredCsvUploadResult.success ? 'text-green-900' : 'text-red-900'}`}>
+                          {structuredCsvUploadResult.success ? '✓ Success!' : '✗ Error'}
+                        </p>
+                        <p className={`text-sm mt-1 ${structuredCsvUploadResult.success ? 'text-green-800' : 'text-red-800'}`}>
+                          {structuredCsvUploadResult.message}
+                        </p>
+                        {structuredCsvUploadResult.created !== undefined && structuredCsvUploadResult.created > 0 && (
+                          <p className="text-sm text-green-800 mt-1">Created {structuredCsvUploadResult.created} structured question(s)</p>
+                        )}
+                        {structuredCsvUploadResult.errors && structuredCsvUploadResult.errors.length > 0 && (
+                          <ul className="list-disc list-inside text-xs text-yellow-700 mt-2 space-y-1">
+                            {structuredCsvUploadResult.errors.slice(0, 5).map((err, idx) => (
+                              <li key={idx}>{err}</li>
+                            ))}
+                            {structuredCsvUploadResult.errors.length > 5 && (
+                              <li>... and {structuredCsvUploadResult.errors.length - 5} more</li>
+                            )}
+                          </ul>
+                        )}
+                      </div>
+                    )}
+                    <Button
+                      type="button"
+                      onClick={handleStructuredCSVUpload}
+                      disabled={!structuredCsvFile || structuredCsvUploading}
+                      className="mt-3 px-6 py-2 rounded-xl bg-gray-900 hover:bg-gray-800 text-white font-medium disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                      {structuredCsvUploading ? (
+                        <>
+                          <span className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin inline-block mr-2 align-middle" />
+                          Uploading...
+                        </>
+                      ) : (
+                        <>
+                          <Upload className="w-4 h-4 mr-2 inline-block" />
+                          Upload CSV
+                        </>
+                      )}
+                    </Button>
+                  </div>
+
+                  <Button
+                    onClick={async () => {
+                      if (!structuredForm.paragraph || structuredForm.mcqs.length === 0) {
+                        alert('Please fill in the paragraph and add at least one MCQ');
+                        return;
+                      }
+                      for (const mcq of structuredForm.mcqs) {
+                        if (!mcq.question || !mcq.optionA || !mcq.optionB || !mcq.optionC || !mcq.optionD) {
+                          alert('Please fill in all MCQ fields');
+                          return;
+                        }
+                      }
+                      try {
+                        const adminSecret = getAdminSecret();
+                        const questionId = structuredForm.id || generateStructuredAutoId();
+                        await structuredQuestionAPI.create({
+                          id: questionId,
+                          title: structuredForm.title || null,
+                          paragraph: structuredForm.paragraph,
+                          category: structuredForm.category || null,
+                          mcqs: structuredForm.mcqs.map((mcq, index) => ({
+                            ...mcq,
+                            order: index
+                          }))
+                        }, adminSecret);
+                        setStructuredForm({
+                          id: generateStructuredAutoId(),
+                          title: '',
+                          paragraph: '',
+                          category: '',
+                          mcqs: [{
+                            id: '',
+                            question: '',
+                            optionA: '',
+                            optionB: '',
+                            optionC: '',
+                            optionD: '',
+                            answer: 'A',
+                            order: 0
+                          }]
+                        });
+                        alert('Structured question created successfully');
+                        loadStructuredQuestions();
+                      } catch (err) {
+                        alert(err.message || 'Failed to create structured question');
+                      }
+                    }}
+                    className="mt-8 w-full h-12 rounded-xl bg-gradient-to-r from-[#4facfe] to-[#00f2fe] hover:opacity-90 text-white gap-2 shadow-sm"
+                  >
+                    <Plus className="w-5 h-5" />
+                    Add Structured Question
+                  </Button>
+                </div>
+              </div>
+            </TabsContent>
+
+            {/* Structured Writing Form - paragraph + Q&A pairs */}
+            <TabsContent value="structured-writing" className="mt-6">
+              <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-6 lg:p-8">
+                <div className="mb-6 pb-4 border-b border-gray-200">
+                  <h3 className="text-2xl font-bold text-gray-900 mb-2">Add Structured Questions Writing</h3>
+                  <p className="text-sm text-gray-600">Paragraph plus multiple question-answer pairs. Students see the paragraph and reveal answers on click.</p>
+                </div>
+                <div className="space-y-5">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+                    <div className="space-y-2">
+                      <Label htmlFor="writing-id">Question ID (Auto-generated)</Label>
+                      <Input
+                        id="writing-id"
+                        placeholder="Auto-generated"
+                        value={structuredWritingForm.id}
+                        readOnly
+                        className="rounded-xl border-gray-200 bg-gray-50 cursor-not-allowed"
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="writing-title">Title (Optional)</Label>
+                      <Input
+                        id="writing-title"
+                        placeholder="e.g., Case Study, Reading Comprehension"
+                        value={structuredWritingForm.title}
+                        onChange={(e) => setStructuredWritingForm({ ...structuredWritingForm, title: e.target.value })}
+                        className="rounded-xl border-gray-200"
+                      />
+                    </div>
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="writing-category">Category (Optional)</Label>
+                    <Input
+                      id="writing-category"
+                      placeholder="e.g., English, General"
+                      value={structuredWritingForm.category}
+                      onChange={(e) => setStructuredWritingForm({ ...structuredWritingForm, category: e.target.value })}
+                      className="rounded-xl border-gray-200"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="writing-paragraph">Paragraph *</Label>
+                    <Textarea
+                      id="writing-paragraph"
+                      placeholder="Enter the paragraph or incident description..."
+                      value={structuredWritingForm.paragraph}
+                      onChange={(e) => setStructuredWritingForm({ ...structuredWritingForm, paragraph: e.target.value })}
+                      className="rounded-xl border-gray-200 min-h-[200px] resize-none"
+                      rows={8}
+                    />
+                  </div>
+                  <div className="space-y-4">
+                    <div className="flex items-center justify-between">
+                      <Label>Questions & Answers *</Label>
+                      <Button
+                        type="button"
+                        onClick={() =>
+                          setStructuredWritingForm({
+                            ...structuredWritingForm,
+                            qaPairs: [
+                              ...structuredWritingForm.qaPairs,
+                              { id: '', question: '', answer: '', order: structuredWritingForm.qaPairs.length },
+                            ],
+                          })
+                        }
+                        variant="outline"
+                        size="sm"
+                        className="rounded-lg"
+                      >
+                        <Plus className="w-4 h-4 mr-2" />
+                        Add Q&A
+                      </Button>
+                    </div>
+                    {structuredWritingForm.qaPairs.map((qa, index) => (
+                      <div key={index} className="p-4 border border-gray-200 rounded-xl bg-gray-50">
+                        <div className="flex items-center justify-between mb-3">
+                          <Label className="text-base font-semibold">Q&A {index + 1}</Label>
+                          {structuredWritingForm.qaPairs.length > 1 && (
+                            <Button
+                              type="button"
+                              onClick={() => {
+                                const newPairs = structuredWritingForm.qaPairs.filter((_, i) => i !== index);
+                                setStructuredWritingForm({ ...structuredWritingForm, qaPairs: newPairs });
+                              }}
+                              variant="ghost"
+                              size="sm"
+                              className="text-red-600 hover:text-red-700 hover:bg-red-50"
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </Button>
+                          )}
+                        </div>
+                        <div className="space-y-3">
+                          <div className="space-y-2">
+                            <Label>Question *</Label>
+                            <Input
+                              placeholder="Question..."
+                              value={qa.question}
+                              onChange={(e) => {
+                                const newPairs = [...structuredWritingForm.qaPairs];
+                                newPairs[index].question = e.target.value;
+                                setStructuredWritingForm({ ...structuredWritingForm, qaPairs: newPairs });
+                              }}
+                              className="rounded-xl border-gray-200"
+                            />
+                          </div>
+                          <div className="space-y-2">
+                            <Label>Answer *</Label>
+                            <Textarea
+                              placeholder="Answer..."
+                              value={qa.answer}
+                              onChange={(e) => {
+                                const newPairs = [...structuredWritingForm.qaPairs];
+                                newPairs[index].answer = e.target.value;
+                                setStructuredWritingForm({ ...structuredWritingForm, qaPairs: newPairs });
+                              }}
+                              className="rounded-xl border-gray-200 min-h-[80px]"
+                              rows={3}
+                            />
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+
+                  {/* CSV Upload - question, answer */}
+                  <div className="pt-6 border-t border-gray-200">
+                    <h4 className="text-lg font-bold text-gray-900 mb-2">Or upload Q&A from CSV</h4>
+                    <p className="text-sm text-gray-600 mb-4">CSV format: <code className="bg-gray-100 px-1 rounded">question, answer</code>. Rows will be added to the list above.</p>
+                    <div className="space-y-3">
+                      <Label htmlFor="structured-writing-csv-upload">Select CSV file</Label>
+                      <label
+                        htmlFor="structured-writing-csv-upload"
+                        className="flex flex-col items-center justify-center w-full h-32 border-2 border-gray-300 border-dashed rounded-xl cursor-pointer bg-gray-50 hover:bg-gray-100"
+                      >
+                        <Upload className="w-8 h-8 mb-2 text-gray-400" />
+                        <p className="text-sm text-gray-500"><span className="font-semibold">Click to upload</span> (CSV only)</p>
+                        {structuredWritingCsvFile && <p className="text-sm text-gray-700 mt-2 font-medium">Selected: {structuredWritingCsvFile.name}</p>}
+                        <input
+                          id="structured-writing-csv-upload"
+                          type="file"
+                          accept=".csv"
+                          className="hidden"
+                          onChange={handleStructuredWritingCSVFileChange}
+                          disabled={structuredWritingCsvUploading}
+                        />
+                      </label>
+                      {structuredWritingCsvUploadResult && (
+                        <div className={`p-4 rounded-xl border ${structuredWritingCsvUploadResult.success ? 'bg-green-50 border-green-200' : 'bg-red-50 border-red-200'}`}>
+                          <p className={`text-sm font-medium ${structuredWritingCsvUploadResult.success ? 'text-green-800' : 'text-red-800'}`}>{structuredWritingCsvUploadResult.message}</p>
+                        </div>
+                      )}
+                      <Button
+                        type="button"
+                        onClick={handleStructuredWritingCSVUpload}
+                        disabled={!structuredWritingCsvFile || structuredWritingCsvUploading}
+                        className="px-6 py-2 rounded-xl bg-gray-900 hover:bg-gray-800 text-white font-medium disabled:opacity-50"
+                      >
+                        {structuredWritingCsvUploading ? 'Processing...' : 'Upload CSV'}
+                      </Button>
+                    </div>
+                  </div>
+
+                  <Button
+                    onClick={async () => {
+                      const validPairs = structuredWritingForm.qaPairs.filter((qa) => qa.question.trim() && qa.answer.trim());
+                      if (!structuredWritingForm.paragraph.trim()) {
+                        alert('Please enter the paragraph');
+                        return;
+                      }
+                      if (validPairs.length === 0) {
+                        alert('Please add at least one question and answer');
+                        return;
+                      }
+                      try {
+                        const adminSecret = getAdminSecret();
+                        await structuredWritingAPI.create(
+                          {
+                            id: structuredWritingForm.id || generateStructuredWritingAutoId(),
+                            title: structuredWritingForm.title || null,
+                            paragraph: structuredWritingForm.paragraph,
+                            category: structuredWritingForm.category || null,
+                            qaPairs: validPairs.map((qa, index) => ({ ...qa, order: index })),
+                          },
+                          adminSecret
+                        );
+                        setStructuredWritingForm({
+                          id: generateStructuredWritingAutoId(),
+                          title: '',
+                          paragraph: '',
+                          category: '',
+                          qaPairs: [{ id: '', question: '', answer: '', order: 0 }],
+                        });
+                        setStructuredWritingCsvUploadResult(null);
+                        alert('Structured writing created successfully');
+                        loadStructuredWritings();
+                      } catch (err) {
+                        alert(err.message || 'Failed to create');
+                      }
+                    }}
+                    className="w-full h-12 rounded-xl bg-gradient-to-r from-[#4facfe] to-[#00f2fe] hover:opacity-90 text-white gap-2 shadow-sm"
+                  >
+                    <Plus className="w-5 h-5" />
+                    Add Structured Writing
+                  </Button>
+                </div>
+              </div>
+            </TabsContent>
           </Tabs>
         </TabsContent>
 
@@ -1003,6 +1885,8 @@ export function QuestionEditor() {
                 <option value="mcq">MCQ Questions</option>
                 <option value="essay">Essay Questions</option>
                 <option value="summary">Summarize Exercises</option>
+                <option value="structured">Structured-QUEs-MCQ</option>
+                <option value="structuredWriting">Structured Writing</option>
               </select>
             </div>
           </div>
@@ -1012,7 +1896,7 @@ export function QuestionEditor() {
               <div className="inline-block w-8 h-8 border-4 border-[#667eea] border-t-transparent rounded-full animate-spin mb-4"></div>
               <div className="text-xl text-gray-600">Loading questions...</div>
             </div>
-          ) : displayItems.items.length === 0 && questions.length === 0 && essays.length === 0 && summaries.length === 0 ? (
+          ) : displayItems.items.length === 0 && questions.length === 0 && essays.length === 0 && summaries.length === 0 && structuredQuestions.length === 0 && structuredWritings.length === 0 ? (
             <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-12 text-center">
               <div className="inline-flex items-center justify-center w-16 h-16 bg-gray-100 rounded-full mb-4">
                 <Search className="w-8 h-8 text-gray-400" />
@@ -1048,7 +1932,9 @@ export function QuestionEditor() {
                   displayItems.items.map((item) => {
                     const isEssay = item._type === 'essay' || displayItems.type === 'essay';
                     const isSummary = item._type === 'summary' || displayItems.type === 'summary';
-                    const itemType = isSummary ? 'summary' : isEssay ? 'essay' : 'mcq';
+                    const isStructured = item._type === 'structured' || displayItems.type === 'structured';
+                    const isStructuredWriting = item._type === 'structuredWriting' || displayItems.type === 'structuredWriting';
+                    const itemType = isSummary ? 'summary' : isEssay ? 'essay' : isStructured ? 'structured' : isStructuredWriting ? 'structuredWriting' : 'mcq';
                     const isSelected = isItemSelected(item.id, itemType);
                     
                     return (
@@ -1072,6 +1958,12 @@ export function QuestionEditor() {
                                   if (isSummary) {
                                     setSelectedQuestion(item);
                                     setSelectedQuestionType('summary');
+                                  } else if (isStructured) {
+                                    setSelectedQuestion(item);
+                                    setSelectedQuestionType('structured');
+                                  } else if (isStructuredWriting) {
+                                    setSelectedQuestion(item);
+                                    setSelectedQuestionType('structuredWriting');
                                   } else {
                                     handleViewQuestion(item, isEssay ? 'essay' : 'mcq');
                                   }
@@ -1079,6 +1971,10 @@ export function QuestionEditor() {
                                 className={`inline-flex items-center px-3 py-1 rounded-lg cursor-pointer hover:opacity-80 transition-opacity ${
                                   isSummary
                                     ? 'bg-gradient-to-r from-[#4facfe]/20 to-[#00f2fe]/20 hover:from-[#4facfe]/30 hover:to-[#00f2fe]/30'
+                                    : isStructured
+                                    ? 'bg-gradient-to-r from-[#10b981]/20 to-[#059669]/20 hover:from-[#10b981]/30 hover:to-[#059669]/30'
+                                    : isStructuredWriting
+                                    ? 'bg-gradient-to-r from-[#f59e0b]/20 to-[#d97706]/20 hover:from-[#f59e0b]/30 hover:to-[#d97706]/30'
                                     : isEssay 
                                     ? 'bg-gradient-to-r from-[#fa709a]/20 to-[#fee140]/20 hover:from-[#fa709a]/30 hover:to-[#fee140]/30'
                                     : 'bg-gradient-to-r from-[#667eea]/20 to-[#764ba2]/20 hover:from-[#667eea]/30 hover:to-[#764ba2]/30'
@@ -1088,6 +1984,10 @@ export function QuestionEditor() {
                                 <span className={`text-sm font-semibold ${
                                   isSummary
                                     ? 'bg-gradient-to-r from-[#4facfe] to-[#00f2fe] bg-clip-text text-transparent'
+                                    : isStructured
+                                    ? 'bg-gradient-to-r from-[#10b981] to-[#059669] bg-clip-text text-transparent'
+                                    : isStructuredWriting
+                                    ? 'bg-gradient-to-r from-[#f59e0b] to-[#d97706] bg-clip-text text-transparent'
                                     : isEssay
                                     ? 'bg-gradient-to-r from-[#fa709a] to-[#fee140] bg-clip-text text-transparent'
                                     : 'bg-gradient-to-r from-[#667eea] to-[#764ba2] bg-clip-text text-transparent'
@@ -1116,6 +2016,20 @@ export function QuestionEditor() {
                                   </span>
                                 </div>
                               )}
+                              {isStructured && (
+                                <div className="inline-flex items-center px-3 py-1 rounded-lg bg-gradient-to-r from-[#10b981]/10 to-[#059669]/10">
+                                  <span className="text-sm font-medium text-[#10b981]">
+                                    Structured-QUEs-MCQ
+                                  </span>
+                                </div>
+                              )}
+                              {isStructuredWriting && (
+                                <div className="inline-flex items-center px-3 py-1 rounded-lg bg-gradient-to-r from-[#f59e0b]/10 to-[#d97706]/10">
+                                  <span className="text-sm font-medium text-[#f59e0b]">
+                                    Structured Writing
+                                  </span>
+                                </div>
+                              )}
                             </div>
                             {isSummary ? (
                               <>
@@ -1124,11 +2038,27 @@ export function QuestionEditor() {
                                   {item.textInputs?.length || 0} text input{item.textInputs?.length !== 1 ? 's' : ''}
                                 </p>
                               </>
+                            ) : isStructured ? (
+                              <>
+                                <p className="text-gray-900 font-medium mb-3">{item.title || item.id}</p>
+                                <p className="text-sm text-gray-500 mb-2 line-clamp-2">{item.paragraph}</p>
+                                <p className="text-sm text-gray-500">
+                                  {item.mcqs?.length || 0} MCQ{item.mcqs?.length !== 1 ? 's' : ''}
+                                </p>
+                              </>
+                            ) : isStructuredWriting ? (
+                              <>
+                                <p className="text-gray-900 font-medium mb-3">{item.title || item.id}</p>
+                                <p className="text-sm text-gray-500 mb-2 line-clamp-2">{item.paragraph}</p>
+                                <p className="text-sm text-gray-500">
+                                  {item.qaPairs?.length || 0} Q&A{item.qaPairs?.length !== 1 ? 's' : ''}
+                                </p>
+                              </>
                             ) : (
                               <p className="text-gray-900 font-medium mb-3">{item.question}</p>
                             )}
                             
-                            {!isEssay && (
+                            {!isEssay && !isStructured && (
                               <>
                                 {item.image && (
                                   <div className="mb-3 rounded-lg overflow-hidden border border-gray-200 max-w-md">
@@ -1197,12 +2127,12 @@ export function QuestionEditor() {
           )}
           
           {/* Questions Count */}
-          {!loading && (questions.length > 0 || essays.length > 0 || summaries.length > 0) && (
+          {!loading && (questions.length > 0 || essays.length > 0 || summaries.length > 0 || structuredQuestions.length > 0 || structuredWritings.length > 0) && (
             <div className="text-center text-sm text-gray-500">
-              Showing {displayItems.items.length} of {questions.length + essays.length + summaries.length} item{(questions.length + essays.length + summaries.length) !== 1 ? 's' : ''}
+              Showing {displayItems.items.length} of {questions.length + essays.length + summaries.length + structuredQuestions.length + structuredWritings.length} item{(questions.length + essays.length + summaries.length + structuredQuestions.length + structuredWritings.length) !== 1 ? 's' : ''}
               {questionTypeFilter === 'all' && (
                 <span className="ml-2">
-                  ({questions.length} MCQ{questions.length !== 1 ? 's' : ''}, {essays.length} Essay{essays.length !== 1 ? 's' : ''}, {summaries.length} Summar{summaries.length !== 1 ? 'ies' : 'y'})
+                  ({questions.length} MCQ{questions.length !== 1 ? 's' : ''}, {essays.length} Essay{essays.length !== 1 ? 's' : ''}, {summaries.length} Summar{summaries.length !== 1 ? 'ies' : 'y'}, {structuredQuestions.length} Structured MCQ{structuredQuestions.length !== 1 ? 's' : ''}, {structuredWritings.length} Writing{structuredWritings.length !== 1 ? 's' : ''})
                 </span>
               )}
             </div>
@@ -1225,12 +2155,16 @@ export function QuestionEditor() {
                   <ArrowLeft className="w-5 h-5" />
                 </Button>
                 <DialogTitle className="text-2xl font-semibold text-gray-900">
-                  {selectedQuestionType === 'summary' ? 'Summary Details' : 'Question Details'} - {selectedQuestion.id}
+                  {selectedQuestionType === 'summary' ? 'Summary Details' : selectedQuestionType === 'structured' ? 'Structured Question Details' : selectedQuestionType === 'structuredWriting' ? 'Structured Writing Details' : 'Question Details'} - {selectedQuestion.id}
                 </DialogTitle>
               </div>
               <DialogDescription className="text-gray-600">
                 {selectedQuestionType === 'summary' 
                   ? 'Summarize Exercise' 
+                  : selectedQuestionType === 'structured'
+                  ? 'Structured-QUEs-MCQ'
+                  : selectedQuestionType === 'structuredWriting'
+                  ? 'Structured Writing'
                   : selectedQuestionType === 'essay' 
                   ? 'Essay Type Question' 
                   : 'MCQ Question'}
@@ -1243,11 +2177,23 @@ export function QuestionEditor() {
                 <div className={`inline-flex items-center gap-2 px-4 py-2 rounded-xl ${
                   selectedQuestionType === 'essay'
                     ? 'bg-gradient-to-r from-[#fa709a]/10 to-[#fee140]/10'
+                    : selectedQuestionType === 'structured'
+                    ? 'bg-gradient-to-r from-[#10b981]/10 to-[#059669]/10'
+                    : selectedQuestionType === 'structuredWriting'
+                    ? 'bg-gradient-to-r from-[#f59e0b]/10 to-[#d97706]/10'
+                    : selectedQuestionType === 'summary'
+                    ? 'bg-gradient-to-r from-[#4facfe]/10 to-[#00f2fe]/10'
                     : 'bg-gradient-to-r from-[#667eea]/10 to-[#764ba2]/10'
                 }`}>
                   <span className={`text-sm font-medium ${
                     selectedQuestionType === 'essay'
                       ? 'text-[#fa709a]'
+                      : selectedQuestionType === 'structured'
+                      ? 'text-[#10b981]'
+                      : selectedQuestionType === 'structuredWriting'
+                      ? 'text-[#f59e0b]'
+                      : selectedQuestionType === 'summary'
+                      ? 'text-[#4facfe]'
                       : 'text-[#667eea]'
                   }`}>
                     {selectedQuestion.id}
@@ -1263,15 +2209,27 @@ export function QuestionEditor() {
                     <span className="text-sm font-medium text-[#fa709a]">Essay Type</span>
                   </div>
                 )}
+                {selectedQuestionType === 'structured' && (
+                  <div className="inline-flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-[#10b981]/10 to-[#059669]/10 rounded-xl">
+                    <span className="text-sm font-medium text-[#10b981]">Structured-QUEs-MCQ</span>
+                  </div>
+                )}
+                {selectedQuestionType === 'structuredWriting' && (
+                  <div className="inline-flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-[#f59e0b]/10 to-[#d97706]/10 rounded-xl">
+                    <span className="text-sm font-medium text-[#f59e0b]">Structured Writing</span>
+                  </div>
+                )}
               </div>
 
               {/* Question Content */}
-              <div className="bg-gray-50 rounded-2xl p-6 border border-gray-200">
-                <h3 className="text-sm font-semibold text-gray-700 mb-3 uppercase tracking-wide">Question</h3>
-                <p className="text-base text-gray-900 leading-relaxed whitespace-pre-wrap">
-                  {selectedQuestion.question}
-                </p>
-              </div>
+              {selectedQuestionType !== 'structured' && selectedQuestionType !== 'structuredWriting' && (
+                <div className="bg-gray-50 rounded-2xl p-6 border border-gray-200">
+                  <h3 className="text-sm font-semibold text-gray-700 mb-3 uppercase tracking-wide">Question</h3>
+                  <p className="text-base text-gray-900 leading-relaxed whitespace-pre-wrap">
+                    {selectedQuestion.question}
+                  </p>
+                </div>
+              )}
 
               {/* MCQ Options */}
               {selectedQuestionType === 'mcq' && (
@@ -1387,6 +2345,107 @@ export function QuestionEditor() {
                         </div>
                       ))}
                     </div>
+                  </div>
+                </>
+              )}
+
+              {/* Structured Question Details */}
+              {selectedQuestionType === 'structured' && (
+                <>
+                  <div className="bg-white rounded-2xl p-6 border border-gray-200 space-y-6">
+                    {selectedQuestion.title && (
+                      <div>
+                        <h3 className="text-lg font-semibold text-gray-900 mb-2">{selectedQuestion.title}</h3>
+                      </div>
+                    )}
+                    
+                    <div className="bg-gray-50 rounded-xl p-5 border border-gray-200">
+                      <h4 className="text-sm font-semibold text-gray-700 mb-2 uppercase tracking-wide">Paragraph</h4>
+                      <p className="text-base text-gray-900 leading-relaxed whitespace-pre-wrap">
+                        {selectedQuestion.paragraph}
+                      </p>
+                    </div>
+
+                    {selectedQuestion.mcqs && selectedQuestion.mcqs.length > 0 && (
+                      <div className="space-y-4">
+                        <h4 className="text-sm font-semibold text-gray-700 uppercase tracking-wide">MCQ Questions</h4>
+                        {selectedQuestion.mcqs
+                          .sort((a, b) => (a.order || 0) - (b.order || 0))
+                          .map((mcq, index) => (
+                            <div key={index} className="bg-white rounded-xl p-5 border border-gray-200">
+                              <div className="flex items-center gap-2 mb-3">
+                                <span className="text-sm font-semibold text-gray-700">MCQ {index + 1}</span>
+                              </div>
+                              <p className="text-base text-gray-900 mb-4 font-medium">{mcq.question}</p>
+                              <div className="space-y-2">
+                                {[
+                                  { label: 'A', text: mcq.optionA },
+                                  { label: 'B', text: mcq.optionB },
+                                  { label: 'C', text: mcq.optionC },
+                                  { label: 'D', text: mcq.optionD },
+                                ].map((option) => (
+                                  <div
+                                    key={option.label}
+                                    className={`p-3 rounded-lg border ${
+                                      option.label === mcq.answer
+                                        ? 'bg-green-50 border-green-300'
+                                        : 'bg-gray-50 border-gray-200'
+                                    }`}
+                                  >
+                                    <div className="flex items-center gap-2">
+                                      <div className={`flex-shrink-0 w-8 h-8 rounded-md flex items-center justify-center text-sm font-semibold ${
+                                        option.label === mcq.answer
+                                          ? 'bg-green-500 text-white'
+                                          : 'bg-gray-200 text-gray-600'
+                                      }`}>
+                                        {option.label}
+                                      </div>
+                                      <span className="text-sm text-gray-900">{option.text}</span>
+                                      {option.label === mcq.answer && (
+                                        <span className="ml-auto px-2 py-1 bg-green-500 text-white text-xs font-medium rounded">
+                                          Correct
+                                        </span>
+                                      )}
+                                    </div>
+                                  </div>
+                                ))}
+                              </div>
+                            </div>
+                          ))}
+                      </div>
+                    )}
+                  </div>
+                </>
+              )}
+
+              {/* Structured Writing Details */}
+              {selectedQuestionType === 'structuredWriting' && (
+                <>
+                  <div className="bg-white rounded-2xl p-6 border border-gray-200 space-y-6">
+                    {selectedQuestion.title && (
+                      <div>
+                        <h3 className="text-lg font-semibold text-gray-900 mb-2">{selectedQuestion.title}</h3>
+                      </div>
+                    )}
+                    <div className="bg-gray-50 rounded-xl p-5 border border-gray-200">
+                      <h4 className="text-sm font-semibold text-gray-700 mb-2 uppercase tracking-wide">Paragraph</h4>
+                      <p className="text-base text-gray-900 leading-relaxed whitespace-pre-wrap">
+                        {selectedQuestion.paragraph}
+                      </p>
+                    </div>
+                    {selectedQuestion.qaPairs && selectedQuestion.qaPairs.length > 0 && (
+                      <div className="space-y-4">
+                        <h4 className="text-sm font-semibold text-gray-700 uppercase tracking-wide">Questions & Answers</h4>
+                        {selectedQuestion.qaPairs
+                          .sort((a, b) => (a.order || 0) - (b.order || 0))
+                          .map((qa, index) => (
+                            <div key={index} className="bg-white rounded-xl p-5 border border-gray-200">
+                              <p className="text-base text-gray-900 font-medium mb-2">Q: {qa.question}</p>
+                              <p className="text-base text-gray-600 pl-4 border-l-2 border-gray-200">A: {qa.answer}</p>
+                            </div>
+                          ))}
+                      </div>
+                    )}
                   </div>
                 </>
               )}

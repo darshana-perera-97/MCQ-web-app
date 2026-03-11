@@ -13,6 +13,8 @@ import analyticsRoutes from './routes/analyticsRoutes.js';
 import whatsappRoutes from './routes/whatsappRoutes.js';
 import materialRoutes from './routes/materialRoutes.js';
 import summaryRoutes from './routes/summaryRoutes.js';
+import structuredQuestionRoutes from './routes/structuredQuestionRoutes.js';
+import structuredWritingRoutes from './routes/structuredWritingRoutes.js';
 import { connectWhatsApp, restartWhatsApp } from './services/whatsappService.js';
 
 const __filename = fileURLToPath(import.meta.url);
@@ -55,6 +57,8 @@ app.use('/api/analytics', analyticsRoutes);
 app.use('/api/whatsapp', whatsappRoutes);
 app.use('/api/materials', materialRoutes);
 app.use('/api/summaries', summaryRoutes);
+app.use('/api/structured-questions', structuredQuestionRoutes);
+app.use('/api/structured-writings', structuredWritingRoutes);
 
 // Health check route
 app.get('/api/health', (req, res) => {

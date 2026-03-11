@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { ProgressRing } from '../common/ProgressRing';
 import { useAuth } from '../../context/AuthContext';
 import { useLanguage } from '../../context/LanguageContext';
-import { userAPI, mcqAPI, essayAPI, notificationAPI } from '../../services/api';
+import { userAPI, mcqAPI, essayAPI, notificationAPI, structuredQuestionAPI, structuredWritingAPI } from '../../services/api';
 import { Button } from '../ui/button';
 import { BookOpen, TrendingUp, Award, LogOut, FileText, Bell, PenTool, FileCheck, Languages } from 'lucide-react';
 import { NotificationsDrawer } from './NotificationsDrawer';
@@ -42,6 +42,8 @@ export function Dashboard() {
   const [notificationsEnabled, setNotificationsEnabled] = useState(true);
   const [savingPreferences, setSavingPreferences] = useState(false);
   const [hasNewNotifications, setHasNewNotifications] = useState(false);
+  const [structuredQuestions, setStructuredQuestions] = useState([]);
+  const [structuredWritings, setStructuredWritings] = useState([]);
 
   useEffect(() => {
     if (!user) {
@@ -51,6 +53,8 @@ export function Dashboard() {
     loadUserStats();
     loadNotificationPreferences();
     loadEssays();
+    loadStructuredQuestions();
+    loadStructuredWritings();
     checkNewNotifications();
   }, [user, navigate]);
 
@@ -69,6 +73,24 @@ export function Dashboard() {
       setEssays(response.essays || []);
     } catch (err) {
       console.error('Error loading essays:', err);
+    }
+  };
+
+  const loadStructuredQuestions = async () => {
+    try {
+      const response = await structuredQuestionAPI.getAll();
+      setStructuredQuestions(response.structuredQuestions || []);
+    } catch (err) {
+      console.error('Error loading structured questions:', err);
+    }
+  };
+
+  const loadStructuredWritings = async () => {
+    try {
+      const response = await structuredWritingAPI.getAll();
+      setStructuredWritings(response.structuredWritings || []);
+    } catch (err) {
+      console.error('Error loading structured writings:', err);
     }
   };
 
@@ -352,9 +374,41 @@ export function Dashboard() {
           );
           })()}
 
-          {/* Latest Score Card */}
+          {/* Structured Questions Card */}
           {(() => {
             const color = getCardColor(5);
+            return (
+          <div className={`${color.bg} rounded-2xl shadow-sm border ${color.border} p-8`}>
+            <div className="flex flex-col h-full">
+              <div className="flex items-center gap-3 mb-5">
+                <div className={`p-3 ${color.iconBg} rounded-xl border ${color.iconBorder}`}>
+                  <FileText className={`w-6 h-6 ${color.iconText}`} />
+                </div>
+                <h3 className="text-lg font-bold text-gray-900">{language === 'si' ? 'සිද්ධි මත පදනම් වූ ප්‍රශ්න' : 'Questions based on Incidents'}</h3>
+              </div>
+              <p className="text-gray-600 mb-6 flex-1 font-normal">
+                {language === 'si' 
+                  ? 'සිද්ධි විස්තර කියවා ඒවාට අදාළ MCQ ප්‍රශ්නවලට පිළිතුරු දෙන්න.'
+                  : 'Read incident descriptions and answer related MCQ questions.'}
+              </p>
+              <div className="mb-4">
+                <div className="text-sm text-gray-500 mb-1 font-normal">{language === 'si' ? 'ලබා ගත හැකි ප්‍රශ්න' : 'Available Questions'}</div>
+                <div className="text-3xl font-bold text-gray-900">{structuredQuestions.length + structuredWritings.length}</div>
+              </div>
+              <Button 
+                onClick={() => navigate('/student/structured-questions')}
+                className="w-full bg-gray-900 hover:bg-gray-800 text-white rounded-lg h-12 font-medium transition-all"
+              >
+                {language === 'si' ? 'ප්‍රශ්න බලන්න' : 'View Questions'}
+              </Button>
+            </div>
+          </div>
+          );
+          })()}
+
+          {/* Latest Score Card */}
+          {(() => {
+            const color = getCardColor(6);
             return (
           <div className={`${color.bg} rounded-2xl shadow-sm border ${color.border} p-8 md:col-span-2 lg:col-span-1`}>
             <div className="flex flex-col">
@@ -379,7 +433,7 @@ export function Dashboard() {
 
           {/* Total Score Card */}
           {(() => {
-            const color = getCardColor(6);
+            const color = getCardColor(7);
             return (
           <div className={`${color.bg} rounded-2xl shadow-sm border ${color.border} p-8 md:col-span-2 lg:col-span-3`}>
             <div className="flex items-center justify-between">

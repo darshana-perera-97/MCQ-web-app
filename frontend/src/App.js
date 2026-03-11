@@ -19,6 +19,7 @@ import { Materials as AdminMaterials } from './components/admin/Materials';
 import { Materials as StudentMaterials } from './components/student/Materials';
 import { Summarize } from './components/student/Summarize';
 import { Essays } from './components/student/Essays';
+import { StructuredQuestions } from './components/student/StructuredQuestions';
 
 function App() {
   return (
@@ -35,6 +36,7 @@ function App() {
           <Route path="/student/materials" element={<StudentMaterials />} />
           <Route path="/student/essays" element={<Essays />} />
           <Route path="/student/summarize" element={<Summarize />} />
+          <Route path="/student/structured-questions" element={<StructuredQuestions />} />
           <Route path="/quiz" element={<QuizInterface />} />
           <Route path="/admin" element={<AdminLayout />}>
             <Route index element={<AdminDashboard />} />
