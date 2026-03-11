@@ -5,7 +5,7 @@ import { useAuth } from '../../context/AuthContext';
 import { useLanguage } from '../../context/LanguageContext';
 import { userAPI, mcqAPI, essayAPI, summaryAPI, notificationAPI, structuredQuestionAPI, structuredWritingAPI } from '../../services/api';
 import { Button } from '../ui/button';
-import { BookOpen, TrendingUp, Award, LogOut, FileText, Bell, PenTool, FileCheck, Languages } from 'lucide-react';
+import { BookOpen, TrendingUp, Award, LogOut, FileText, Bell, PenTool, FileCheck, Languages, ChevronLeft, ChevronRight } from 'lucide-react';
 import { NotificationsDrawer } from './NotificationsDrawer';
 
 export function Dashboard() {
@@ -38,6 +38,7 @@ export function Dashboard() {
     navigate('/login');
   };
   const [userStats, setUserStats] = useState(null);
+  const [progressData, setProgressData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [notificationsDrawerOpen, setNotificationsDrawerOpen] = useState(false);
@@ -45,6 +46,8 @@ export function Dashboard() {
   const [notificationsEnabled, setNotificationsEnabled] = useState(true);
   const [savingPreferences, setSavingPreferences] = useState(false);
   const [hasNewNotifications, setHasNewNotifications] = useState(false);
+  const [notifications, setNotifications] = useState([]);
+  const [notificationSlideIndex, setNotificationSlideIndex] = useState(0);
   const [structuredQuestions, setStructuredQuestions] = useState([]);
   const [structuredWritings, setStructuredWritings] = useState([]);
   const [summaries, setSummaries] = useState([]);
@@ -55,6 +58,7 @@ export function Dashboard() {
       return;
     }
     loadUserStats();
+    loadProgress();
     loadNotificationPreferences();
     loadEssays();
     loadSummaries();
@@ -71,6 +75,12 @@ export function Dashboard() {
 
     return () => clearInterval(interval);
   }, []);
+
+  useEffect(() => {
+    if (notifications.length > 0 && notificationSlideIndex >= notifications.length) {
+      setNotificationSlideIndex(notifications.length - 1);
+    }
+  }, [notifications.length, notificationSlideIndex]);
 
   const loadEssays = async () => {
     try {
@@ -111,17 +121,29 @@ export function Dashboard() {
   const checkNewNotifications = async () => {
     try {
       const response = await notificationAPI.getAll();
-      const notifications = response.notifications || [];
+      const list = (response.notifications || []).sort(
+        (a, b) => new Date(b.createdAt) - new Date(a.createdAt)
+      );
+      setNotifications(list);
       const now = new Date();
-      const hasNew = notifications.some((notification) => {
-        const notificationDate = new Date(notification.createdAt);
-        const diffInHours = (now - notificationDate) / (1000 * 60 * 60);
-        return diffInHours < 24; // Less than 24 hours old
+      const hasNew = list.some((n) => {
+        const diffInHours = (now - new Date(n.createdAt)) / (1000 * 60 * 60);
+        return diffInHours < 24;
       });
       setHasNewNotifications(hasNew);
     } catch (err) {
       console.error('Error checking notifications:', err);
     }
+  };
+
+  const formatNotificationDate = (dateString) => {
+    return new Date(dateString).toLocaleDateString('en-US', {
+      month: 'short',
+      day: 'numeric',
+      year: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit'
+    });
   };
 
   const loadNotificationPreferences = () => {
@@ -164,6 +186,16 @@ export function Dashboard() {
       console.error('Error loading user stats:', err);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const loadProgress = async () => {
+    if (!user?.id) return;
+    try {
+      const data = await userAPI.getProgress(user.id);
+      setProgressData(data);
+    } catch (err) {
+      console.error('Error loading progress:', err);
     }
   };
 
@@ -267,10 +299,109 @@ export function Dashboard() {
           </div>
           );
           })()}
+
+          {/* Your Progress - overall completion across system (hidden on mobile) */}
+          {(() => {
+            const color = getCardColor(1);
+            const totalAll = progressData?.totalAll ?? 0;
+            const completedAll = progressData?.completedAll ?? 0;
+            const overallPct = totalAll > 0 ? progressData?.overallPercentage ?? 0 : 0;
+            const displayTotal = Math.max(totalAll, 1);
+            return (
+          <div className={`hidden md:block ${color.bg} rounded-2xl shadow-sm border ${color.border} p-8`}>
+            <div className="flex flex-col items-center">
+              <h3 className="text-lg font-bold text-gray-900 mb-8">{language === 'si' ? 'ඔබේ ප්‍රගතිය' : 'Your Progress'}</h3>
+              <ProgressRing 
+                completed={completedAll} 
+                total={displayTotal}
+                size={140}
+                strokeWidth={10}
+                centerLabel="percentage"
+              />
+              <p className="text-sm text-gray-600 mt-6 text-center font-normal">
+                {language === 'si' 
+                  ? `සමස්ත පද්‍රව්‍යයෙන් ${overallPct}% සම්පූර්ණයි`
+                  : `${overallPct}% of all MCQs & questions completed`}
+              </p>
+            </div>
+          </div>
+          );
+          })()}
+
+          {/* Notifications in here - slider (hidden on mobile) */}
+          {(() => {
+            const color = getCardColor(2);
+            const count = notifications.length;
+            const current = count > 0 ? Math.min(notificationSlideIndex, count - 1) : 0;
+            const item = notifications[current];
+            return (
+          <div className={`hidden md:flex ${color.bg} rounded-2xl shadow-sm border ${color.border} p-8 flex-col h-full`}>
+            <div className="flex items-center gap-3 mb-4">
+              <div className={`p-3 ${color.iconBg} rounded-xl border ${color.iconBorder}`}>
+                <Bell className={`w-6 h-6 ${color.iconText}`} />
+              </div>
+              <h3 className="text-lg font-bold text-gray-900">{language === 'si' ? 'දැනුම්දීම් මෙහි' : 'Notifications in here'}</h3>
+            </div>
+            <div className="flex-1 min-h-0 flex flex-col">
+              {count === 0 ? (
+                <p className="text-sm text-gray-600 font-normal py-4">{language === 'si' ? 'දැනුම්දීම් නොමැත' : 'No notifications yet'}</p>
+              ) : (
+                <>
+                  <div className="flex-1 rounded-xl bg-white/60 border border-gray-200/80 p-4 min-h-[120px] flex flex-col">
+                    <h4 className="font-semibold text-gray-900 text-sm mb-1 line-clamp-2">{item?.title}</h4>
+                    <p className="text-xs text-gray-600 line-clamp-3 flex-1">{item?.message}</p>
+                    <span className="text-xs text-gray-500 mt-2">{item?.createdAt && formatNotificationDate(item.createdAt)}</span>
+                  </div>
+                  <div className="flex items-center justify-between gap-2 mt-4">
+                    <Button
+                      variant="outline"
+                      size="icon"
+                      onClick={() => setNotificationSlideIndex((i) => Math.max(0, i - 1))}
+                      disabled={count <= 1 || current <= 0}
+                      className="rounded-lg shrink-0 border-gray-300 hover:bg-gray-100"
+                    >
+                      <ChevronLeft className="w-5 h-5" />
+                    </Button>
+                    <div className="flex gap-1.5 justify-center flex-wrap">
+                      {notifications.map((_, idx) => (
+                        <button
+                          key={idx}
+                          onClick={() => setNotificationSlideIndex(idx)}
+                          className={`w-2 h-2 rounded-full transition-colors ${
+                            idx === current ? 'bg-gray-900' : 'bg-gray-300 hover:bg-gray-400'
+                          }`}
+                          aria-label={language === 'si' ? `ස්ලයිඩ් ${idx + 1}` : `Slide ${idx + 1}`}
+                        />
+                      ))}
+                    </div>
+                    <Button
+                      variant="outline"
+                      size="icon"
+                      onClick={() => setNotificationSlideIndex((i) => Math.min(notifications.length - 1, i + 1))}
+                      disabled={count <= 1 || current >= count - 1}
+                      className="rounded-lg shrink-0 border-gray-300 hover:bg-gray-100"
+                    >
+                      <ChevronRight className="w-5 h-5" />
+                    </Button>
+                  </div>
+                </>
+              )}
+            </div>
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => { setNotificationsDrawerOpen(true); setHasNewNotifications(false); }}
+              className="mt-4 w-full rounded-lg text-gray-700 hover:bg-gray-100 font-medium"
+            >
+              {language === 'si' ? 'සියල්ල බලන්න' : 'View all'}
+            </Button>
+          </div>
+          );
+          })()}
           
           {/* Start Quiz Card - MCQs Only */}
           {(() => {
-            const color = getCardColor(1);
+            const color = getCardColor(3);
             return (
           <div className={`${color.bg} rounded-2xl shadow-sm border ${color.border} p-8`}>
             <div className="flex flex-col h-full">
@@ -302,7 +433,7 @@ export function Dashboard() {
 
           {/* Materials Card */}
           {(() => {
-            const color = getCardColor(2);
+            const color = getCardColor(4);
             return (
           <div className={`${color.bg} rounded-2xl shadow-sm border ${color.border} p-8`}>
             <div className="flex flex-col h-full">
@@ -330,7 +461,7 @@ export function Dashboard() {
 
           {/* Essay Questions Card */}
           {(() => {
-            const color = getCardColor(3);
+            const color = getCardColor(5);
             return (
           <div className={`${color.bg} rounded-2xl shadow-sm border ${color.border} p-8`}>
             <div className="flex flex-col h-full">
@@ -362,7 +493,7 @@ export function Dashboard() {
 
           {/* Summarize Card */}
           {(() => {
-            const color = getCardColor(4);
+            const color = getCardColor(6);
             return (
           <div className={`${color.bg} rounded-2xl shadow-sm border ${color.border} p-8`}>
             <div className="flex flex-col h-full">
@@ -394,7 +525,7 @@ export function Dashboard() {
 
           {/* Structured Questions Card */}
           {(() => {
-            const color = getCardColor(5);
+            const color = getCardColor(7);
             return (
           <div className={`${color.bg} rounded-2xl shadow-sm border ${color.border} p-8`}>
             <div className="flex flex-col h-full">
@@ -426,7 +557,7 @@ export function Dashboard() {
 
           {/* Latest Score Card - hidden for now; set SHOW_LATEST_PERFORMANCE_CARD to true to show */}
           {SHOW_LATEST_PERFORMANCE_CARD && (() => {
-            const color = getCardColor(6);
+            const color = getCardColor(8);
             return (
           <div className={`${color.bg} rounded-2xl shadow-sm border ${color.border} p-8 md:col-span-2 lg:col-span-1`}>
             <div className="flex flex-col">
@@ -451,7 +582,7 @@ export function Dashboard() {
 
           {/* Total Score Card */}
           {(() => {
-            const color = getCardColor(7);
+            const color = getCardColor(9);
             return (
           <div className={`${color.bg} rounded-2xl shadow-sm border ${color.border} p-8 md:col-span-2 lg:col-span-3`}>
             <div className="flex items-center justify-between">

@@ -1,13 +1,15 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { essayAPI } from '../../services/api';
+import { useAuth } from '../../context/AuthContext';
+import { essayAPI, userAPI } from '../../services/api';
 import { Button } from '../ui/button';
 import { Input } from '../ui/input';
-import { ArrowLeft, PenTool, Search, Loader, FileText } from 'lucide-react';
+import { ArrowLeft, PenTool, Search, Loader, FileText, CheckCircle2, Circle } from 'lucide-react';
 import { useLanguage } from '../../context/LanguageContext';
 
 export function Essays() {
   const navigate = useNavigate();
+  const { user } = useAuth();
   const { language } = useLanguage();
   const [essays, setEssays] = useState([]);
   const [filteredEssays, setFilteredEssays] = useState([]);
@@ -15,6 +17,8 @@ export function Essays() {
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('All');
   const [selectedEssay, setSelectedEssay] = useState(null);
+  const [completedIds, setCompletedIds] = useState([]);
+  const [togglingId, setTogglingId] = useState(null);
 
   // Random light color palette
   const getRandomColor = (index) => {
@@ -35,11 +39,36 @@ export function Essays() {
 
   useEffect(() => {
     loadEssays();
-  }, []);
+    if (user?.id) loadCompletions();
+  }, [user?.id]);
 
   useEffect(() => {
     filterEssays();
   }, [essays, searchQuery, selectedCategory]);
+
+  const loadCompletions = async () => {
+    if (!user?.id) return;
+    try {
+      const data = await userAPI.getCompletions(user.id);
+      setCompletedIds(data.completedEssayIds || []);
+    } catch (err) {
+      console.error('Error loading completions:', err);
+    }
+  };
+
+  const handleToggleComplete = async (e, essayId) => {
+    e.stopPropagation();
+    if (!user?.id || togglingId) return;
+    setTogglingId(essayId);
+    try {
+      const res = await userAPI.toggleComplete(user.id, { type: 'essay', itemId: essayId });
+      setCompletedIds(res.completions?.completedEssayIds || []);
+    } catch (err) {
+      console.error('Error toggling completion:', err);
+    } finally {
+      setTogglingId(null);
+    }
+  };
 
   const loadEssays = async () => {
     try {
@@ -277,6 +306,20 @@ export function Essays() {
                   <div className="text-xs text-gray-500 font-normal mb-3">
                     {formatDate(essay.createdAt)}
                   </div>
+                )}
+                {user && (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={(e) => handleToggleComplete(e, essay.id)}
+                    disabled={togglingId === essay.id}
+                    className={`mb-3 w-full sm:w-auto rounded-lg font-medium ${
+                      completedIds.includes(essay.id) ? 'border-green-300 bg-green-50 text-green-700 hover:bg-green-100' : 'border-gray-200 hover:bg-gray-50'
+                    }`}
+                  >
+                    {completedIds.includes(essay.id) ? <CheckCircle2 className="w-4 h-4 mr-1" /> : <Circle className="w-4 h-4 mr-1" />}
+                    {completedIds.includes(essay.id) ? (language === 'si' ? 'සම්පූර්ණයි' : 'Completed') : (language === 'si' ? 'සම්පූර්ණ කරන්න' : 'Mark complete')}
+                  </Button>
                 )}
                 <div className="mt-4 flex items-center gap-2 text-sm font-medium text-gray-700 group-hover:text-gray-900 transition-colors">
                   <span>{language === 'si' ? 'ප්‍රශ්නය බලන්න' : 'View Question'}</span>

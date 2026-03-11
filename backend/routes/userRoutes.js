@@ -7,6 +7,9 @@ import {
   updateUser,
   deleteUser,
   getUserStats,
+  getProgress,
+  getCompletions,
+  toggleComplete,
   approveUser,
   rejectUser,
   verifyOTP,
@@ -23,6 +26,9 @@ router.post('/login', login);
 router.post('/verify-otp', verifyOTP);
 router.post('/resend-otp', resendOTP);
 router.get('/:id/stats', getUserStats);
+router.get('/:id/progress', getProgress);
+router.get('/:id/completions', getCompletions);
+router.post('/:id/complete', toggleComplete);
 router.put('/:id/notification-preferences', updateNotificationPreferences);
 
 // Admin routes

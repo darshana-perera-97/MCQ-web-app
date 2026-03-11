@@ -1,11 +1,23 @@
 import { UserModel } from '../models/UserModel.js';
 import { SettingsModel } from '../models/SettingsModel.js';
+import { McqModel } from '../models/McqModel.js';
+import { MaterialModel } from '../models/MaterialModel.js';
+import { EssayModel } from '../models/EssayModel.js';
+import { SummaryModel } from '../models/SummaryModel.js';
+import { StructuredQuestionModel } from '../models/StructuredQuestionModel.js';
+import { StructuredWritingModel } from '../models/StructuredWritingModel.js';
 import { v4 as uuidv4 } from 'uuid';
 import { sendOTPEmail, sendApprovalEmail } from '../services/emailService.js';
 import { sendWhatsAppMessage, getWhatsAppStatus } from '../services/whatsappService.js';
 
 const userModel = new UserModel();
 const settingsModel = new SettingsModel();
+const mcqModel = new McqModel();
+const materialModel = new MaterialModel();
+const essayModel = new EssayModel();
+const summaryModel = new SummaryModel();
+const structuredQuestionModel = new StructuredQuestionModel();
+const structuredWritingModel = new StructuredWritingModel();
 
 /**
  * Generate a 6-digit OTP
@@ -429,6 +441,108 @@ export const getUserStats = async (req, res) => {
     });
   } catch (error) {
     console.error('Get user stats error:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+};
+
+export const getProgress = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const user = await userModel.findById(id);
+    if (!user) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+    const completions = await userModel.getCompletions(id);
+    const [
+      allMcqs,
+      allMaterials,
+      allEssays,
+      allSummaries,
+      allStructuredQuestions,
+      allStructuredWritings
+    ] = await Promise.all([
+      mcqModel.findAll(),
+      materialModel.findAll(),
+      essayModel.findAll(),
+      summaryModel.findAll(),
+      structuredQuestionModel.findAll(),
+      structuredWritingModel.findAll()
+    ]);
+
+    const totalMcqs = allMcqs.length;
+    const totalMaterials = allMaterials.length;
+    const totalEssays = allEssays.length;
+    const totalSummaries = allSummaries.length;
+    const totalStructuredQuestions = allStructuredQuestions.length;
+    const totalStructuredWritings = allStructuredWritings.length;
+
+    const completedMcqs = (user.seenMcqs || []).length;
+    const completedMaterials = (completions.completedMaterialIds || []).length;
+    const completedEssays = (completions.completedEssayIds || []).length;
+    const completedSummaries = (completions.completedSummaryIds || []).length;
+    const completedStructuredQuestions = (completions.completedStructuredQuestionIds || []).length;
+    const completedStructuredWritings = (completions.completedStructuredWritingIds || []).length;
+
+    const totalQuestionsAndMaterials = totalMaterials + totalEssays + totalSummaries + totalStructuredQuestions + totalStructuredWritings;
+    const completedQuestionsAndMaterials = completedMaterials + completedEssays + completedSummaries + completedStructuredQuestions + completedStructuredWritings;
+
+    const totalAll = totalMcqs + totalQuestionsAndMaterials;
+    const completedAll = completedMcqs + completedQuestionsAndMaterials;
+    const overallPercentage = totalAll > 0 ? Math.round((completedAll / totalAll) * 100) : 0;
+
+    res.json({
+      overallPercentage,
+      completedAll,
+      totalAll,
+      mcq: { completed: completedMcqs, total: totalMcqs },
+      questionsAndMaterials: {
+        completed: completedQuestionsAndMaterials,
+        total: totalQuestionsAndMaterials,
+        breakdown: {
+          materials: { completed: completedMaterials, total: totalMaterials },
+          essays: { completed: completedEssays, total: totalEssays },
+          summaries: { completed: completedSummaries, total: totalSummaries },
+          structuredQuestions: { completed: completedStructuredQuestions, total: totalStructuredQuestions },
+          structuredWritings: { completed: completedStructuredWritings, total: totalStructuredWritings }
+        }
+      }
+    });
+  } catch (error) {
+    console.error('Get progress error:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+};
+
+export const getCompletions = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const completions = await userModel.getCompletions(id);
+    if (!completions) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+    res.json(completions);
+  } catch (error) {
+    console.error('Get completions error:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+};
+
+export const toggleComplete = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { type, itemId } = req.body || {};
+    const allowed = ['material', 'essay', 'summary', 'structuredQuestion', 'structuredWriting'];
+    if (!type || !allowed.includes(type) || !itemId) {
+      return res.status(400).json({ error: 'Invalid body: type (material|essay|summary|structuredQuestion|structuredWriting) and itemId required' });
+    }
+    const result = await userModel.toggleCompletion(id, type, itemId);
+    if (!result) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+    const completions = await userModel.getCompletions(id);
+    res.json({ completed: result.completed, completions });
+  } catch (error) {
+    console.error('Toggle complete error:', error);
     res.status(500).json({ error: 'Internal server error' });
   }
 };

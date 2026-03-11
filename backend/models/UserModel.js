@@ -82,5 +82,59 @@ export class UserModel extends BaseModel {
     await this.update(userId, { score: newScore });
     return { ...user, score: newScore };
   }
+
+  /** Completion list field names by type */
+  static completionKeys = {
+    material: 'completedMaterialIds',
+    essay: 'completedEssayIds',
+    summary: 'completedSummaryIds',
+    structuredQuestion: 'completedStructuredQuestionIds',
+    structuredWriting: 'completedStructuredWritingIds',
+  };
+
+  /**
+   * Toggle completion of an item (material, essay, summary, structuredQuestion, structuredWriting).
+   * @param {string} userId
+   * @param {string} type - 'material' | 'essay' | 'summary' | 'structuredQuestion' | 'structuredWriting'
+   * @param {string} itemId
+   * @returns {{ completed: boolean, list: string[] }} - new completed state and the updated list
+   */
+  async toggleCompletion(userId, type, itemId) {
+    const key = UserModel.completionKeys[type];
+    if (!key) {
+      return null;
+    }
+    const user = await this.findById(userId);
+    if (!user) {
+      return null;
+    }
+    const list = Array.isArray(user[key]) ? [...user[key]] : [];
+    const idx = list.indexOf(itemId);
+    const completed = idx === -1;
+    if (completed) {
+      list.push(itemId);
+    } else {
+      list.splice(idx, 1);
+    }
+    await this.update(userId, { [key]: list });
+    return { completed, list };
+  }
+
+  /**
+   * Get all completion lists for a user.
+   */
+  async getCompletions(userId) {
+    const user = await this.findById(userId);
+    if (!user) {
+      return null;
+    }
+    return {
+      completedMaterialIds: user.completedMaterialIds || [],
+      completedEssayIds: user.completedEssayIds || [],
+      completedSummaryIds: user.completedSummaryIds || [],
+      completedStructuredQuestionIds: user.completedStructuredQuestionIds || [],
+      completedStructuredWritingIds: user.completedStructuredWritingIds || [],
+    };
+  }
 }
 

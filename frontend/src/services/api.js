@@ -70,6 +70,15 @@ export const userAPI = {
 
   getUserStats: (userId) => apiRequest(`/users/${userId}/stats`),
 
+  getProgress: (userId) => apiRequest(`/users/${userId}/progress`),
+
+  getCompletions: (userId) => apiRequest(`/users/${userId}/completions`),
+
+  toggleComplete: (userId, body) => apiRequest(`/users/${userId}/complete`, {
+    method: 'POST',
+    body: JSON.stringify(body),
+  }),
+
   getAllUsers: (adminSecret) => apiRequest('/users', {
     adminSecret,
   }),

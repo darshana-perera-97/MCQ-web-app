@@ -2,13 +2,17 @@ function ProgressRing({
   completed, 
   total, 
   size = 120, 
-  strokeWidth = 8 
+  strokeWidth = 8,
+  /** 'fraction' = show completed/total, 'percentage' = show only % in center */
+  centerLabel = 'fraction'
 }) {
   const radius = (size - strokeWidth) / 2;
   const circumference = 2 * Math.PI * radius;
-  const progress = Math.min(completed / total, 1);
+  const progress = total > 0 ? Math.min(completed / total, 1) : 0;
   const strokeDashoffset = circumference - progress * circumference;
   const percentage = Math.round(progress * 100);
+
+  const showPercentage = centerLabel === 'percentage';
 
   return (
     <div className="relative inline-flex items-center justify-center">
@@ -48,9 +52,11 @@ function ProgressRing({
       </svg>
       <div className="absolute inset-0 flex flex-col items-center justify-center">
         <div className="text-2xl font-semibold bg-gradient-to-br from-[#667eea] to-[#764ba2] bg-clip-text text-transparent">
-          {completed}/{total}
+          {showPercentage ? `${percentage}%` : `${completed}/${total}`}
         </div>
-        <div className="text-xs text-gray-500 mt-1">{percentage}%</div>
+        {!showPercentage && (
+          <div className="text-xs text-gray-500 mt-1">{percentage}%</div>
+        )}
       </div>
     </div>
   );

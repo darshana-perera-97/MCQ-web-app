@@ -1,17 +1,21 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { summaryAPI } from '../../services/api';
+import { useAuth } from '../../context/AuthContext';
+import { summaryAPI, userAPI } from '../../services/api';
 import { Button } from '../ui/button';
 import { Textarea } from '../ui/textarea';
-import { ArrowLeft, FileText, Loader, BookOpen, CheckCircle2, Sparkles } from 'lucide-react';
+import { ArrowLeft, FileText, Loader, BookOpen, CheckCircle2, Sparkles, Circle } from 'lucide-react';
 
 export function Summarize() {
   const navigate = useNavigate();
+  const { user } = useAuth();
   const [summaries, setSummaries] = useState([]);
   const [loading, setLoading] = useState(true);
   const [selectedSummary, setSelectedSummary] = useState(null);
   const [formData, setFormData] = useState({});
   const [submitting, setSubmitting] = useState(false);
+  const [completedIds, setCompletedIds] = useState([]);
+  const [togglingId, setTogglingId] = useState(null);
 
   // Random light color palette
   const getRandomColor = (index) => {
@@ -32,7 +36,32 @@ export function Summarize() {
 
   useEffect(() => {
     loadSummaries();
-  }, []);
+    if (user?.id) loadCompletions();
+  }, [user?.id]);
+
+  const loadCompletions = async () => {
+    if (!user?.id) return;
+    try {
+      const data = await userAPI.getCompletions(user.id);
+      setCompletedIds(data.completedSummaryIds || []);
+    } catch (err) {
+      console.error('Error loading completions:', err);
+    }
+  };
+
+  const handleToggleComplete = async (e, summaryId) => {
+    e.stopPropagation();
+    if (!user?.id || togglingId) return;
+    setTogglingId(summaryId);
+    try {
+      const res = await userAPI.toggleComplete(user.id, { type: 'summary', itemId: summaryId });
+      setCompletedIds(res.completions?.completedSummaryIds || []);
+    } catch (err) {
+      console.error('Error toggling completion:', err);
+    } finally {
+      setTogglingId(null);
+    }
+  };
 
   const loadSummaries = async () => {
     try {
@@ -306,7 +335,20 @@ export function Summarize() {
                       })}
                     </div>
                   </div>
-                  
+                  {user && (
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={(e) => handleToggleComplete(e, summary.id)}
+                      disabled={togglingId === summary.id}
+                      className={`mt-3 w-full rounded-lg font-medium ${
+                        completedIds.includes(summary.id) ? 'border-green-300 bg-green-50 text-green-700 hover:bg-green-100' : 'border-gray-200 hover:bg-gray-50'
+                      }`}
+                    >
+                      {completedIds.includes(summary.id) ? <CheckCircle2 className="w-4 h-4 mr-1" /> : <Circle className="w-4 h-4 mr-1" />}
+                      {completedIds.includes(summary.id) ? 'Completed' : 'Mark complete'}
+                    </Button>
+                  )}
                   <div className="mt-4 flex items-center gap-2 text-sm font-medium text-gray-700 group-hover:text-gray-900 transition-colors">
                     <span>Start Exercise</span>
                     <ArrowLeft className="w-4 h-4 rotate-180" />

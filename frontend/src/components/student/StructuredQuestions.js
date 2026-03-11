@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { structuredQuestionAPI, structuredWritingAPI } from '../../services/api';
+import { useAuth } from '../../context/AuthContext';
+import { structuredQuestionAPI, structuredWritingAPI, userAPI } from '../../services/api';
 import { Button } from '../ui/button';
 import { Input } from '../ui/input';
 import { ArrowLeft, Search, Loader, FileText, CheckCircle2, Circle, Eye, PenLine } from 'lucide-react';
@@ -8,6 +9,7 @@ import { useLanguage } from '../../context/LanguageContext';
 
 export function StructuredQuestions() {
   const navigate = useNavigate();
+  const { user } = useAuth();
   const { language } = useLanguage();
   const [questions, setQuestions] = useState([]);
   const [writings, setWritings] = useState([]);
@@ -20,6 +22,9 @@ export function StructuredQuestions() {
   const [selectedType, setSelectedType] = useState(null); // 'mcq' | 'writing'
   const [selectedAnswers, setSelectedAnswers] = useState({}); // { mcqId: 'A' | 'B' | 'C' | 'D' }
   const [revealedAnswers, setRevealedAnswers] = useState({}); // { qaIndex: true } for writing view
+  const [completedQuestionIds, setCompletedQuestionIds] = useState([]);
+  const [completedWritingIds, setCompletedWritingIds] = useState([]);
+  const [togglingId, setTogglingId] = useState(null);
 
   // Random light color palette
   const getRandomColor = (index) => {
@@ -55,12 +60,39 @@ export function StructuredQuestions() {
       }
     };
     load();
-  }, []);
+    if (user?.id) loadCompletions();
+  }, [user?.id]);
 
   useEffect(() => {
     filterQuestions();
     filterWritings();
   }, [questions, writings, searchQuery, selectedCategory]);
+
+  const loadCompletions = async () => {
+    if (!user?.id) return;
+    try {
+      const data = await userAPI.getCompletions(user.id);
+      setCompletedQuestionIds(data.completedStructuredQuestionIds || []);
+      setCompletedWritingIds(data.completedStructuredWritingIds || []);
+    } catch (err) {
+      console.error('Error loading completions:', err);
+    }
+  };
+
+  const handleToggleComplete = async (e, type, itemId) => {
+    e.stopPropagation();
+    if (!user?.id || togglingId) return;
+    setTogglingId(itemId);
+    try {
+      const res = await userAPI.toggleComplete(user.id, { type, itemId });
+      setCompletedQuestionIds(res.completions?.completedStructuredQuestionIds || []);
+      setCompletedWritingIds(res.completions?.completedStructuredWritingIds || []);
+    } catch (err) {
+      console.error('Error toggling completion:', err);
+    } finally {
+      setTogglingId(null);
+    }
+  };
 
   const filterQuestions = () => {
     let filtered = questions;
@@ -336,6 +368,7 @@ export function StructuredQuestions() {
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {filteredQuestions.map((question, index) => {
               const colorScheme = getRandomColor(index);
+              const isCompleted = completedQuestionIds.includes(question.id);
               return (
                 <div
                   key={`mcq-${question.id}`}
@@ -354,6 +387,20 @@ export function StructuredQuestions() {
                     </div>
                   </div>
                   <p className="text-sm text-gray-600 line-clamp-3 mb-4">{question.paragraph}</p>
+                  {user && (
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={(e) => handleToggleComplete(e, 'structuredQuestion', question.id)}
+                      disabled={togglingId === question.id}
+                      className={`mb-3 w-full rounded-lg font-medium ${
+                        isCompleted ? 'border-green-300 bg-green-50 text-green-700 hover:bg-green-100' : 'border-gray-200 hover:bg-gray-50'
+                      }`}
+                    >
+                      {isCompleted ? <CheckCircle2 className="w-4 h-4 mr-1" /> : <Circle className="w-4 h-4 mr-1" />}
+                      {isCompleted ? (language === 'si' ? 'සම්පූර්ණයි' : 'Completed') : (language === 'si' ? 'සම්පූර්ණ කරන්න' : 'Mark complete')}
+                    </Button>
+                  )}
                   <div className="flex items-center justify-between text-sm text-gray-500">
                     <span>{question.mcqs?.length || 0} {language === 'si' ? 'MCQ' : 'MCQs'}</span>
                     <span className="font-medium text-gray-700">{language === 'si' ? 'විවෘත කරන්න' : 'View →'}</span>
@@ -363,6 +410,7 @@ export function StructuredQuestions() {
             })}
             {filteredWritings.map((writing, index) => {
               const colorScheme = getRandomColor(filteredQuestions.length + index);
+              const isCompleted = completedWritingIds.includes(writing.id);
               return (
                 <div
                   key={`write-${writing.id}`}
@@ -381,6 +429,20 @@ export function StructuredQuestions() {
                     </div>
                   </div>
                   <p className="text-sm text-gray-600 line-clamp-3 mb-4">{writing.paragraph}</p>
+                  {user && (
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={(e) => handleToggleComplete(e, 'structuredWriting', writing.id)}
+                      disabled={togglingId === writing.id}
+                      className={`mb-3 w-full rounded-lg font-medium ${
+                        isCompleted ? 'border-green-300 bg-green-50 text-green-700 hover:bg-green-100' : 'border-gray-200 hover:bg-gray-50'
+                      }`}
+                    >
+                      {isCompleted ? <CheckCircle2 className="w-4 h-4 mr-1" /> : <Circle className="w-4 h-4 mr-1" />}
+                      {isCompleted ? (language === 'si' ? 'සම්පූර්ණයි' : 'Completed') : (language === 'si' ? 'සම්පූර්ණ කරන්න' : 'Mark complete')}
+                    </Button>
+                  )}
                   <div className="flex items-center justify-between text-sm text-gray-500">
                     <span>{writing.qaPairs?.length || 0} {language === 'si' ? 'ප්‍රශ්න' : 'Q&A'}</span>
                     <span className="font-medium text-gray-700">{language === 'si' ? 'විවෘත කරන්න' : 'View →'}</span>

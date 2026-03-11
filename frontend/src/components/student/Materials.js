@@ -1,28 +1,43 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { materialAPI } from '../../services/api';
+import { useAuth } from '../../context/AuthContext';
+import { materialAPI, userAPI } from '../../services/api';
 import { BACKEND_URL } from '../../config/api';
 import { Button } from '../ui/button';
 import { Input } from '../ui/input';
-import { FileText, Download, Eye, Search, Loader, ArrowLeft } from 'lucide-react';
+import { FileText, Download, Eye, Search, Loader, ArrowLeft, CheckCircle2, Circle } from 'lucide-react';
 import { useLanguage } from '../../context/LanguageContext';
 
 export function Materials() {
   const navigate = useNavigate();
+  const { user } = useAuth();
   const { language } = useLanguage();
   const [materials, setMaterials] = useState([]);
   const [filteredMaterials, setFilteredMaterials] = useState([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('All');
+  const [completedIds, setCompletedIds] = useState([]);
+  const [togglingId, setTogglingId] = useState(null);
 
   useEffect(() => {
     loadMaterials();
-  }, []);
+    if (user?.id) loadCompletions();
+  }, [user?.id]);
 
   useEffect(() => {
     filterMaterials();
   }, [materials, searchQuery, selectedCategory]);
+
+  const loadCompletions = async () => {
+    if (!user?.id) return;
+    try {
+      const data = await userAPI.getCompletions(user.id);
+      setCompletedIds(data.completedMaterialIds || []);
+    } catch (err) {
+      console.error('Error loading completions:', err);
+    }
+  };
 
   const loadMaterials = async () => {
     try {
@@ -33,6 +48,20 @@ export function Materials() {
       console.error('Error loading materials:', err);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleToggleComplete = async (e, materialId) => {
+    e.stopPropagation();
+    if (!user?.id || togglingId) return;
+    setTogglingId(materialId);
+    try {
+      const res = await userAPI.toggleComplete(user.id, { type: 'material', itemId: materialId });
+      setCompletedIds(res.completions?.completedMaterialIds || []);
+    } catch (err) {
+      console.error('Error toggling completion:', err);
+    } finally {
+      setTogglingId(null);
     }
   };
 
@@ -182,12 +211,29 @@ export function Materials() {
                   <span>{formatDate(material.uploadedAt)}</span>
                 </div>
 
-                <div className="flex gap-2">
+                <div className="flex flex-wrap gap-2">
+                  {user && (
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={(e) => handleToggleComplete(e, material.id)}
+                      disabled={togglingId === material.id}
+                      className={`rounded-lg font-medium shrink-0 ${
+                        completedIds.includes(material.id)
+                          ? 'border-green-300 bg-green-50 text-green-700 hover:bg-green-100'
+                          : 'border-gray-200 hover:bg-gray-50'
+                      }`}
+                      title={completedIds.includes(material.id) ? (language === 'si' ? 'සම්පූර්ණ ලෙස ඉවත් කරන්න' : 'Mark as not completed') : (language === 'si' ? 'සම්පූර්ණ ලෙස සලකුණු කරන්න' : 'Mark as completed')}
+                    >
+                      {completedIds.includes(material.id) ? <CheckCircle2 className="w-4 h-4 mr-1" /> : <Circle className="w-4 h-4 mr-1" />}
+                      {completedIds.includes(material.id) ? (language === 'si' ? 'සම්පූර්ණයි' : 'Completed') : (language === 'si' ? 'සම්පූර්ණ කරන්න' : 'Mark complete')}
+                    </Button>
+                  )}
                   <Button
                     variant="outline"
                     size="sm"
                     onClick={() => window.open(`${BACKEND_URL}${material.filePath}`, '_blank')}
-                    className="flex-1 rounded-lg border-gray-200 hover:bg-gray-50 font-medium"
+                    className="flex-1 rounded-lg border-gray-200 hover:bg-gray-50 font-medium min-w-0"
                   >
                     <Eye className="w-4 h-4 mr-2" />
                     {language === 'si' ? 'බලන්න' : 'View'}
@@ -196,7 +242,7 @@ export function Materials() {
                     variant="outline"
                     size="sm"
                     onClick={() => materialAPI.download(material.id)}
-                    className="flex-1 rounded-lg border-gray-200 hover:bg-gray-50 font-medium"
+                    className="flex-1 rounded-lg border-gray-200 hover:bg-gray-50 font-medium min-w-0"
                   >
                     <Download className="w-4 h-4 mr-2" />
                     {language === 'si' ? 'බාගත' : 'Download'}
