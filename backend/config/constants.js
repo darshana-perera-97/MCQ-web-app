@@ -3,7 +3,7 @@
  * Centralized location for all backend URLs and configuration values
  */
 
-const PORT =  39401;
+const PORT =  3941;
 const BACKEND_URL = `http://93.127.129.102:3941`;
 
 
