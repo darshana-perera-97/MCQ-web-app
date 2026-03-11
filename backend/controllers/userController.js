@@ -267,6 +267,15 @@ export const login = async (req, res) => {
         return res.status(403).json({ error: 'Your account has been rejected. Please contact admin.' });
       }
 
+      // If approved on trial, block login after trial expires
+      if (user.approvalType === 'trial' && user.trialExpiresAt) {
+        const expiresAt = new Date(user.trialExpiresAt).getTime();
+        if (Date.now() > expiresAt) {
+          await userModel.update(user.id, { status: 'pending' });
+          return res.status(403).json({ error: 'Your trial period has expired. Please contact admin for full access.' });
+        }
+      }
+
       // Check and reset daily count if needed (only for non-admin users)
       await userModel.checkAndResetDailyCount(user.id);
       // Update last login time for inactivity reminders
@@ -427,13 +436,20 @@ export const getUserStats = async (req, res) => {
 export const approveUser = async (req, res) => {
   try {
     const { id } = req.params;
+    const { trialDays } = req.body || {};
     const user = await userModel.findById(id);
 
     if (!user) {
       return res.status(404).json({ error: 'User not found' });
     }
 
-    await userModel.update(id, { status: 'approved' });
+    const isTrial = trialDays === 1;
+    const updates = {
+      status: 'approved',
+      approvalType: isTrial ? 'trial' : 'permanent',
+      trialExpiresAt: isTrial ? new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString() : null,
+    };
+    await userModel.update(id, updates);
 
     // Send approval notification via both email and WhatsApp (use phone or alternatePhone)
     const phone = user.phone || user.phoneNumber || user.mobile || user.alternatePhone || null;
@@ -452,9 +468,15 @@ export const approveUser = async (req, res) => {
       message += ' Approval notification sent via WhatsApp.';
     }
 
+    if (isTrial) {
+      message += ' (1-day trial).';
+    }
+
     res.json({
       message: message,
       user: userResponse,
+      approvalType: isTrial ? 'trial' : 'permanent',
+      trialExpiresAt: updates.trialExpiresAt,
       notificationSent: {
         email: notificationResults.email.sent,
         whatsapp: notificationResults.whatsapp.sent

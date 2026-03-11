@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { userAPI, getAdminSecret } from '../../services/api';
 import { Button } from '../ui/button';
 import { Input } from '../ui/input';
-import { Pencil, Trash2, Search, UserPlus, Check, X, ChevronDown, ChevronUp, Phone, MapPin, Calendar, GraduationCap, Mail } from 'lucide-react';
+import { Pencil, Trash2, Search, UserPlus, Check, X, ChevronDown, ChevronUp, Phone, GraduationCap, Mail } from 'lucide-react';
 import {
   Dialog,
   DialogContent,
@@ -21,6 +21,7 @@ export function UserManagement() {
   const [expandedUsers, setExpandedUsers] = useState(new Set());
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [approveTargetUser, setApproveTargetUser] = useState(null);
 
   useEffect(() => {
     // Ensure admin secret is set (default to 'admin123' for development)
@@ -67,12 +68,13 @@ export function UserManagement() {
   const approvedUsers = users.filter(u => (u.role === 'student' || !u.role) && u.status === 'approved');
   const rejectedUsers = users.filter(u => (u.role === 'student' || !u.role) && u.status === 'rejected');
 
-  const handleApprove = async (userId) => {
+  const handleApprove = async (userId, trialDays = 0) => {
     try {
       const adminSecret = getAdminSecret();
-      await userAPI.approveUser(userId, adminSecret);
+      await userAPI.approveUser(userId, adminSecret, { trialDays });
       await loadUsers();
-      alert('User approved successfully!');
+      setApproveTargetUser(null);
+      alert(trialDays === 1 ? 'User approved for 1-day trial!' : 'User approved permanently!');
     } catch (err) {
       alert(err.message || 'Failed to approve user');
     }
@@ -352,7 +354,7 @@ export function UserManagement() {
                               <Button
                                 variant="ghost"
                                 size="sm"
-                                onClick={() => handleApprove(user.id)}
+                                onClick={() => setApproveTargetUser(user)}
                                 className="rounded-lg hover:bg-green-50 hover:text-green-600"
                                 title="Approve User"
                               >
@@ -425,52 +427,6 @@ export function UserManagement() {
                                       </>
                                     ) : 'N/A'}
                                   </div>
-                                </div>
-                              </div>
-                            </div>
-
-                            {/* Location */}
-                            <div className="space-y-3">
-                              <h3 className="font-semibold text-gray-900 flex items-center gap-2">
-                                <MapPin className="w-4 h-4 text-[#00c6ff]" />
-                                Location
-                              </h3>
-                              <div className="space-y-2 text-sm">
-                                <div>
-                                  <span className="text-gray-500">Current Location:</span>
-                                  <span className="ml-2 text-gray-900">{user.currentLocation || 'N/A'}</span>
-                                </div>
-                                <div>
-                                  <span className="text-gray-500">Country:</span>
-                                  <span className="ml-2 text-gray-900">{user.country || 'N/A'}</span>
-                                </div>
-                                {user.timezone && (
-                                  <div>
-                                    <span className="text-gray-500">Timezone:</span>
-                                    <span className="ml-2 text-gray-900">{user.timezone}</span>
-                                  </div>
-                                )}
-                              </div>
-                            </div>
-
-                            {/* Bio Data */}
-                            <div className="space-y-3">
-                              <h3 className="font-semibold text-gray-900 flex items-center gap-2">
-                                <Calendar className="w-4 h-4 text-[#84fab0]" />
-                                Bio Data
-                              </h3>
-                              <div className="space-y-2 text-sm">
-                                <div>
-                                  <span className="text-gray-500">Date of Birth:</span>
-                                  <span className="ml-2 text-gray-900">{formatDate(user.dateOfBirth)}</span>
-                                </div>
-                                <div>
-                                  <span className="text-gray-500">Gender:</span>
-                                  <span className="ml-2 text-gray-900 capitalize">{user.gender || 'N/A'}</span>
-                                </div>
-                                <div>
-                                  <span className="text-gray-500">Nationality:</span>
-                                  <span className="ml-2 text-gray-900">{user.nationality || 'N/A'}</span>
                                 </div>
                               </div>
                             </div>
@@ -575,16 +531,6 @@ export function UserManagement() {
                     </div>
                     <div>
                       <h4 className="font-semibold text-gray-900 mb-2 flex items-center gap-2">
-                        <MapPin className="w-4 h-4 text-[#00c6ff]" />
-                        Location
-                      </h4>
-                      <div className="space-y-1 text-gray-600">
-                        <div>Location: {user.currentLocation || 'N/A'}</div>
-                        <div>Country: {user.country || 'N/A'}</div>
-                      </div>
-                    </div>
-                    <div>
-                      <h4 className="font-semibold text-gray-900 mb-2 flex items-center gap-2">
                         <GraduationCap className="w-4 h-4 text-[#764ba2]" />
                         Education
                       </h4>
@@ -613,7 +559,7 @@ export function UserManagement() {
                       <Button
                         variant="outline"
                         size="sm"
-                        onClick={() => handleApprove(user.id)}
+                        onClick={() => setApproveTargetUser(user)}
                         className="flex-1 rounded-lg gap-2 text-green-600 hover:bg-green-50"
                       >
                         <Check className="w-4 h-4" />
@@ -658,6 +604,40 @@ export function UserManagement() {
           })}
         </div>
       </div>
+
+      {/* Approve options dialog */}
+      <Dialog open={!!approveTargetUser} onOpenChange={(open) => !open && setApproveTargetUser(null)}>
+        <DialogContent className="sm:max-w-[400px] rounded-2xl bg-white">
+          <DialogHeader>
+            <DialogTitle>Approve user</DialogTitle>
+            <DialogDescription>
+              {approveTargetUser ? `${approveTargetUser.name || approveTargetUser.email} — choose approval type:` : ''}
+            </DialogDescription>
+          </DialogHeader>
+          <div className="flex flex-col gap-3 py-2">
+            <Button
+              onClick={() => approveTargetUser && handleApprove(approveTargetUser.id, 0)}
+              className="w-full rounded-xl bg-gradient-to-r from-green-600 to-green-700 hover:opacity-90 text-white"
+            >
+              Approve permanently
+            </Button>
+            <Button
+              variant="outline"
+              onClick={() => approveTargetUser && handleApprove(approveTargetUser.id, 1)}
+              className="w-full rounded-xl border-green-300 text-green-700 hover:bg-green-50"
+            >
+              Approve for 1 day trial
+            </Button>
+            <Button
+              variant="ghost"
+              onClick={() => setApproveTargetUser(null)}
+              className="w-full rounded-xl"
+            >
+              Cancel
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
 
       {/* Edit User Dialog */}
       <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>

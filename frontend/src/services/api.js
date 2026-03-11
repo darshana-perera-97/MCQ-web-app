@@ -89,9 +89,10 @@ export const userAPI = {
     adminSecret,
   }),
 
-  approveUser: (userId, adminSecret) => apiRequest(`/users/${userId}/approve`, {
+  approveUser: (userId, adminSecret, body = {}) => apiRequest(`/users/${userId}/approve`, {
     method: 'POST',
     adminSecret,
+    body: Object.keys(body).length ? JSON.stringify(body) : undefined,
   }),
 
   rejectUser: (userId, adminSecret) => apiRequest(`/users/${userId}/reject`, {
