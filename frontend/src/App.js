@@ -1,6 +1,7 @@
 import { BrowserRouter, Routes, Route } from 'react-router-dom';
 import { AuthProvider } from './context/AuthContext';
 import { LanguageProvider } from './context/LanguageContext';
+import { GoogleAnalyticsRouteTracker } from './utils/analytics';
 import { LandingPage } from './components/LandingPage';
 import { LandingPageSinhala } from './components/LandingPageSinhala';
 import { WelcomeScreen } from './components/WelcomeScreen';
@@ -26,6 +27,7 @@ function App() {
     <LanguageProvider>
       <AuthProvider>
         <BrowserRouter>
+        <GoogleAnalyticsRouteTracker />
         <Routes>
           <Route path="/" element={<LandingPage />} />
           <Route path="/sin" element={<LandingPageSinhala />} />
