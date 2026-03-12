@@ -239,15 +239,13 @@ export function LoginSignup() {
                 </Button>
               </form>
             ) : (
-              <>
-                <MultiStepSignup
-                  onSubmit={handleSignup}
-                  getRecaptchaToken={() => recaptchaRef.current?.getValue?.() || ''}
-                  loading={loading}
-                  error={error}
-                />
-                <RecaptchaWidget ref={recaptchaRef} />
-              </>
+              <MultiStepSignup
+                onSubmit={handleSignup}
+                getRecaptchaToken={() => recaptchaRef.current?.getValue?.() || ''}
+                recaptchaRef={recaptchaRef}
+                loading={loading}
+                error={error}
+              />
             )}
           </div>
 

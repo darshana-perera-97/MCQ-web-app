@@ -4,6 +4,7 @@ import { Input } from './ui/input';
 import { Label } from './ui/label';
 import { Textarea } from './ui/textarea';
 import { ChevronRight, ChevronLeft, Check, User, Mail, Phone, Briefcase, GraduationCap } from 'lucide-react';
+import { RecaptchaWidget } from './RecaptchaWidget';
 
 const steps = [
   { id: 1, title: 'Basic Info', icon: User },
@@ -11,7 +12,7 @@ const steps = [
   { id: 3, title: 'Education', icon: GraduationCap },
 ];
 
-export function MultiStepSignup({ onSubmit, getRecaptchaToken, loading, error }) {
+export function MultiStepSignup({ onSubmit, getRecaptchaToken, recaptchaRef, loading, error }) {
   const [currentStep, setCurrentStep] = useState(1);
   const [formData, setFormData] = useState({
     // Step 1: Basic Info
@@ -496,6 +497,9 @@ export function MultiStepSignup({ onSubmit, getRecaptchaToken, loading, error })
                   className="rounded-lg border-gray-300 focus:border-blue-500 focus:ring-2 focus:ring-blue-200 focus:ring-offset-0"
                 />
               </div>
+
+              {/* reCAPTCHA on last step only */}
+              {recaptchaRef && <RecaptchaWidget ref={recaptchaRef} />}
             </div>
           </div>
         )}
