@@ -241,11 +241,8 @@ export const signup = async (req, res) => {
 
     await userModel.create(newUser);
 
-    // Send OTP via both email and WhatsApp
+    // Send OTP via both email and WhatsApp (bank details / step 2 & 3 are sent only after OTP is verified)
     const otpResults = await sendOTP(email, name, otp, phone);
-
-    // Send "Step 1 complete - do Step 2 & 3 to activate" via email and WhatsApp
-    await sendAccountCreatedNextSteps(email, name, phone);
 
     // Build response message based on what was sent
     let message = 'User created successfully. ';
