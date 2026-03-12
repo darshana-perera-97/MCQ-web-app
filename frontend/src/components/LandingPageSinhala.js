@@ -242,10 +242,10 @@ export function LandingPageSinhala() {
               <div className="text-xs sm:text-sm text-gray-700 bg-white/70 rounded-xl p-3 space-y-2 border border-emerald-100">
                 <p className="font-medium text-gray-800">බැංකු විස්තර:</p>
                 <p className="whitespace-pre-line">
-                  ගිණුමේ නම: W.S.A.D.S.Perera,{'\n'}
-                  ගිණුම් අංකය: 88395576,{'\n'}
-                  බැංකුව: BOC,{'\n'}
-                  ශාඛාව: Chilaw
+                  ගිණුමේ නම: V.P.N.D. Jayantha,{'\n'}
+                  ගිණුම් අංකය: 8003773471,{'\n'}
+                  බැංකුව: Commercial Bank,{'\n'}
+                  ශාඛාව: Muthuwal branch
                 </p>
               </div>
             </motion.div>

@@ -234,10 +234,10 @@ function getAccountCreatedNextStepsEmailTemplate(name) {
                 <p style="color: #166534; font-size: 15px; font-weight: 600; margin: 0 0 8px 0;">Step 2 – Activate</p>
                 <p style="color: #374151; font-size: 14px; line-height: 1.6; margin: 0;">Complete a one-time payment of LKR 399 to our bank account:</p>
                 <p style="color: #374151; font-size: 14px; line-height: 1.8; margin: 12px 0 0 0;">
-                  Account name: W.S.A.D.S.Perera,<br/>
-                  Account no: 88395576,<br/>
-                  Bank: BOC,<br/>
-                  Branch: Chilaw
+                  Account name: V.P.N.D. Jayantha,<br/>
+                  Account no: 8003773471,<br/>
+                  Bank: Commercial Bank,<br/>
+                  Branch: Muthuwal branch
                 </p>
               </div>
               

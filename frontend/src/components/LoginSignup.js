@@ -211,13 +211,13 @@ export function LoginSignup() {
                   <div className="p-4 rounded-xl border border-gray-200 bg-gray-50/50 space-y-2">
                     <div className="flex items-center gap-2 text-gray-700 font-medium">
                       <Building2 className="w-4 h-4 text-blue-600" />
-                      BOC
+                      Commercial Bank
                     </div>
                     <dl className="text-sm text-gray-600 space-y-1">
-                      <div><span className="font-medium text-gray-700">Account name:</span> W.S.A.D.S.Perera</div>
-                      <div><span className="font-medium text-gray-700">Account no:</span> 88395576</div>
-                      <div><span className="font-medium text-gray-700">Bank:</span> BOC</div>
-                      <div><span className="font-medium text-gray-700">Branch:</span> Chilaw</div>
+                      <div><span className="font-medium text-gray-700">Account name:</span> V.P.N.D. Jayantha</div>
+                      <div><span className="font-medium text-gray-700">Account no:</span> 8003773471</div>
+                      <div><span className="font-medium text-gray-700">Bank:</span> Commercial Bank</div>
+                      <div><span className="font-medium text-gray-700">Branch:</span> Muthuwal branch</div>
                     </dl>
                   </div>
                 </div>

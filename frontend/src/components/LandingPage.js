@@ -234,10 +234,10 @@ export function LandingPage() {
               <div className="text-xs sm:text-sm text-gray-700 bg-white/70 rounded-xl p-3 space-y-2 border border-emerald-100">
                 <p className="font-medium text-gray-800">Bank Details:</p>
                 <p className="whitespace-pre-line">
-                  Account name: W.S.A.D.S.Perera,{'\n'}
-                  Account no: 88395576,{'\n'}
-                  Bank: BOC,{'\n'}
-                  Branch: Chilaw
+                  Account name: V.P.N.D. Jayantha,{'\n'}
+                  Account no: 8003773471,{'\n'}
+                  Bank: Commercial Bank,{'\n'}
+                  Branch: Muthuwal branch
                 </p>
               </div>
             </motion.div>

@@ -80,7 +80,7 @@ async function sendOTP(email, name, otp, phone = null) {
  * Send "account created - complete step 2 & 3 to activate" via email and WhatsApp
  */
 async function sendAccountCreatedNextSteps(email, name, phone = null) {
-  const nextStepsMessage = `Hello ${name},\n\n✅ *Step 1 is successfully completed.* Your account has been created.\n\nTo *activate* your account, please complete:\n\n*Step 2 – Activate:* Pay LKR 399 to our bank account:\n• Account name: W.S.A.D.S.Perera,\n• Account no: 88395576,\n• Bank: BOC,\n• Branch: Chilaw\n\n*Step 3 – Get Access:* Send your payment slip to WhatsApp +94 71 054 5132 or Email exam-admin@nexgenai.asia (include your name and email). Your account will be activated within 2–3 hours.\n\nIf you have questions, contact exam-admin@nexgenai.asia.`;
+  const nextStepsMessage = `Hello ${name},\n\n✅ *Step 1 is successfully completed.* Your account has been created.\n\nTo *activate* your account, please complete:\n\n*Step 2 – Activate:* Pay LKR 399 to our bank account:\n• Account name: V.P.N.D. Jayantha,\n• Account no: 8003773471,\n• Bank: Commercial Bank,\n• Branch: Muthuwal branch\n\n*Step 3 – Get Access:* Send your payment slip to WhatsApp +94 71 054 5132 or Email exam-admin@nexgenai.asia (include your name and email). Your account will be activated within 2–3 hours.\n\nIf you have questions, contact exam-admin@nexgenai.asia.`;
 
   try {
     await sendAccountCreatedNextStepsEmail(email, name);
