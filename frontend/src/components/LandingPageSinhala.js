@@ -241,8 +241,12 @@ export function LandingPageSinhala() {
               </p>
               <div className="text-xs sm:text-sm text-gray-700 bg-white/70 rounded-xl p-3 space-y-2 border border-emerald-100">
                 <p className="font-medium text-gray-800">බැංකු විස්තර:</p>
-                <p><span className="font-medium">Bank of Ceylon</span> — ගිණුම: MCQ Exam Registration, අංක: 1234567890, ශාඛාව: Colombo Main</p>
-                <p><span className="font-medium">Commercial Bank</span> — ගිණුම: NexGen AI Education, අංක: 9876543210, ශාඛාව: Kandy</p>
+                <p className="whitespace-pre-line">
+                  ගිණුමේ නම: W.S.A.D.S.Perera,{'\n'}
+                  ගිණුම් අංකය: 88395576,{'\n'}
+                  බැංකුව: BOC,{'\n'}
+                  ශාඛාව: Chilaw
+                </p>
               </div>
             </motion.div>
 
@@ -265,7 +269,7 @@ export function LandingPageSinhala() {
               </h3>
               <p className="text-sm sm:text-base text-gray-600 leading-relaxed">
                 ඔබේ ගෙවීම් තහවුරුකිරීම WhatsApp{' '}
-                <a href="https://wa.me/94771234567" target="_blank" rel="noopener noreferrer" className="text-green-600 font-semibold hover:underline">+94 77 123 4567</a>
+                <a href="https://wa.me/94710545132" target="_blank" rel="noopener noreferrer" className="text-green-600 font-semibold hover:underline">+94 71 054 5132</a>
                 {' '}හෝ විද්‍යුත් තැපෑල{' '}
                 <a href="mailto:exam-admin@nexgenai.asia" className="text-[#667eea] font-semibold hover:underline">exam-admin@nexgenai.asia</a>ට යවන්න.
                 පරිපාලකයා විසින් සත්‍යාපනය කළ පසු ඔබේ ගිණුම සම්පූර්ණයෙන් සක්‍රිය වේ!

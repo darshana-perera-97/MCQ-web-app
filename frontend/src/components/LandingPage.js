@@ -233,8 +233,12 @@ export function LandingPage() {
               </p>
               <div className="text-xs sm:text-sm text-gray-700 bg-white/70 rounded-xl p-3 space-y-2 border border-emerald-100">
                 <p className="font-medium text-gray-800">Bank Details:</p>
-                <p><span className="font-medium">Bank of Ceylon</span> — Account: MCQ Exam Registration, No: 1234567890, Branch: Colombo Main</p>
-                <p><span className="font-medium">Commercial Bank</span> — Account: NexGen AI Education, No: 9876543210, Branch: Kandy</p>
+                <p className="whitespace-pre-line">
+                  Account name: W.S.A.D.S.Perera,{'\n'}
+                  Account no: 88395576,{'\n'}
+                  Bank: BOC,{'\n'}
+                  Branch: Chilaw
+                </p>
               </div>
             </motion.div>
 
@@ -257,7 +261,7 @@ export function LandingPage() {
               </h3>
               <p className="text-sm sm:text-base text-gray-600 leading-relaxed">
                 Send your payment confirmation to our WhatsApp{' '}
-                <a href="https://wa.me/94771234567" target="_blank" rel="noopener noreferrer" className="text-green-600 font-semibold hover:underline">+94 77 123 4567</a>
+                <a href="https://wa.me/94710545132" target="_blank" rel="noopener noreferrer" className="text-green-600 font-semibold hover:underline">+94 71 054 5132</a>
                 {' '}or Email{' '}
                 <a href="mailto:exam-admin@nexgenai.asia" className="text-[#667eea] font-semibold hover:underline">exam-admin@nexgenai.asia</a>.
                 Once verified by our admin, your account will be fully activated!

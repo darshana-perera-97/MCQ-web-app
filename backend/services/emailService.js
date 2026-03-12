@@ -232,16 +232,18 @@ function getAccountCreatedNextStepsEmailTemplate(name) {
               
               <div style="background-color: #f0fdf4; border: 1px solid #bbf7d0; border-radius: 12px; padding: 20px; margin-bottom: 20px;">
                 <p style="color: #166534; font-size: 15px; font-weight: 600; margin: 0 0 8px 0;">Step 2 – Activate</p>
-                <p style="color: #374151; font-size: 14px; line-height: 1.6; margin: 0;">Complete a one-time payment of LKR 399 to one of our bank accounts:</p>
-                <ul style="color: #374151; font-size: 14px; line-height: 1.8; margin: 12px 0 0 0; padding-left: 20px;">
-                  <li><strong>Bank of Ceylon</strong> — Account: MCQ Exam Registration, No: 1234567890, Branch: Colombo Main</li>
-                  <li><strong>Commercial Bank</strong> — Account: NexGen AI Education, No: 9876543210, Branch: Kandy</li>
-                </ul>
+                <p style="color: #374151; font-size: 14px; line-height: 1.6; margin: 0;">Complete a one-time payment of LKR 399 to our bank account:</p>
+                <p style="color: #374151; font-size: 14px; line-height: 1.8; margin: 12px 0 0 0;">
+                  Account name: W.S.A.D.S.Perera,<br/>
+                  Account no: 88395576,<br/>
+                  Bank: BOC,<br/>
+                  Branch: Chilaw
+                </p>
               </div>
               
               <div style="background-color: #eff6ff; border: 1px solid #bfdbfe; border-radius: 12px; padding: 20px;">
                 <p style="color: #1e40af; font-size: 15px; font-weight: 600; margin: 0 0 8px 0;">Step 3 – Get Access</p>
-                <p style="color: #374151; font-size: 14px; line-height: 1.6; margin: 0;">Send your payment slip (screenshot or photo) to our WhatsApp <strong>+94 77 123 4567</strong> or Email <strong>exam-admin@nexgenai.asia</strong>. Include the name and email you used to register. Your account will be activated within 2–3 hours after verification.</p>
+                <p style="color: #374151; font-size: 14px; line-height: 1.6; margin: 0;">Send your payment slip (screenshot or photo) to our WhatsApp <strong>+94 71 054 5132</strong> or Email <strong>exam-admin@nexgenai.asia</strong>. Include the name and email you used to register. Your account will be activated within 2–3 hours after verification.</p>
               </div>
               
               <p style="color: #6b7280; font-size: 14px; line-height: 1.6; margin: 24px 0 0 0;">If you have any questions, contact us at exam-admin@nexgenai.asia.</p>

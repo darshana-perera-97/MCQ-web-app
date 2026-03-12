@@ -208,29 +208,17 @@ export function LoginSignup() {
                   <p className="text-sm font-medium text-gray-700">
                     {language === 'si' ? 'බැංකු විස්තර' : 'Bank details'}
                   </p>
-                  <div className="grid gap-4 sm:grid-cols-2">
-                    <div className="p-4 rounded-xl border border-gray-200 bg-gray-50/50 space-y-2">
-                      <div className="flex items-center gap-2 text-gray-700 font-medium">
-                        <Building2 className="w-4 h-4 text-blue-600" />
-                        Bank of Ceylon
-                      </div>
-                      <dl className="text-sm text-gray-600 space-y-1">
-                        <div><span className="font-medium text-gray-700">Account name:</span> MCQ Exam Registration</div>
-                        <div><span className="font-medium text-gray-700">Account no:</span> 1234567890</div>
-                        <div><span className="font-medium text-gray-700">Branch:</span> Colombo Main</div>
-                      </dl>
+                  <div className="p-4 rounded-xl border border-gray-200 bg-gray-50/50 space-y-2">
+                    <div className="flex items-center gap-2 text-gray-700 font-medium">
+                      <Building2 className="w-4 h-4 text-blue-600" />
+                      BOC
                     </div>
-                    <div className="p-4 rounded-xl border border-gray-200 bg-gray-50/50 space-y-2">
-                      <div className="flex items-center gap-2 text-gray-700 font-medium">
-                        <Building2 className="w-4 h-4 text-blue-600" />
-                        Commercial Bank
-                      </div>
-                      <dl className="text-sm text-gray-600 space-y-1">
-                        <div><span className="font-medium text-gray-700">Account name:</span> NexGen AI Education</div>
-                        <div><span className="font-medium text-gray-700">Account no:</span> 9876543210</div>
-                        <div><span className="font-medium text-gray-700">Branch:</span> Kandy</div>
-                      </dl>
-                    </div>
+                    <dl className="text-sm text-gray-600 space-y-1">
+                      <div><span className="font-medium text-gray-700">Account name:</span> W.S.A.D.S.Perera</div>
+                      <div><span className="font-medium text-gray-700">Account no:</span> 88395576</div>
+                      <div><span className="font-medium text-gray-700">Bank:</span> BOC</div>
+                      <div><span className="font-medium text-gray-700">Branch:</span> Chilaw</div>
+                    </dl>
                   </div>
                 </div>
 
@@ -239,8 +227,8 @@ export function LoginSignup() {
                     {language === 'si' ? 'ගෙවීම් සල්ලිපත යවන්න' : 'Send your payment slip to'}
                   </p>
                   <div className="flex flex-col sm:flex-row sm:items-center gap-2 text-sm text-gray-700">
-                    <a href="https://wa.me/94771234567" target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-2 text-green-700 hover:underline font-medium">
-                      <Phone className="w-4 h-4" /> +94 77 123 4567
+                    <a href="https://wa.me/94710545132" target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-2 text-green-700 hover:underline font-medium">
+                      <Phone className="w-4 h-4" /> +94 71 054 5132
                     </a>
                     <span className="hidden sm:inline text-gray-400"> or </span>
                     <a href="mailto:exam-admin@nexgenai.asia" className="inline-flex items-center gap-2 text-blue-700 hover:underline font-medium">
