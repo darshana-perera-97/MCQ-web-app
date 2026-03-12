@@ -61,6 +61,13 @@ export const AuthProvider = ({ children }) => {
             user: errorData.user
           };
         }
+        if (errorData.error === 'ACCOUNT_SUSPENDED') {
+          return { 
+            success: false, 
+            error: 'ACCOUNT_SUSPENDED',
+            message: errorData.message || 'Your account is suspended. Please contact admin for more details.'
+          };
+        }
       }
       return { success: false, error: error.message };
     }

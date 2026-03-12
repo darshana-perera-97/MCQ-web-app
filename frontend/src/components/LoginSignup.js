@@ -65,9 +65,11 @@ export function LoginSignup() {
             });
             setShowOTP(true);
             setError('');
-        }
-      } else {
-        setError(result.error || 'Authentication failed');
+          }
+        } else if (result.error === 'ACCOUNT_SUSPENDED') {
+          setError(result.message || (language === 'si' ? 'ඔබේ ගිණුම නවතා ඇත. වැඩිදුර තොරතුරු සඳහා පරිපාලකයා අමතන්න.' : 'Your account is suspended. Please contact admin for more details.'));
+        } else {
+          setError(result.error || 'Authentication failed');
         }
       }
     } catch (err) {

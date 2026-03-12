@@ -324,6 +324,13 @@ export const login = async (req, res) => {
         return res.status(403).json({ error: 'Your account has been rejected. Please contact admin.' });
       }
 
+      if (userStatus === 'suspended') {
+        return res.status(403).json({
+          error: 'ACCOUNT_SUSPENDED',
+          message: 'Your account is suspended. Please contact admin for more details.'
+        });
+      }
+
       // If approved on trial, block login after trial expires
       if (user.approvalType === 'trial' && user.trialExpiresAt) {
         const expiresAt = new Date(user.trialExpiresAt).getTime();
@@ -680,6 +687,14 @@ export const verifyOTP = async (req, res) => {
       otpExpiry: null
     });
 
+    // After email is verified, remind student about activation steps (Step 2 & 3)
+    const phoneForNextSteps = user.phone || user.phoneNumber || user.mobile || user.alternatePhone || null;
+    try {
+      await sendAccountCreatedNextSteps(email, user.name, phoneForNextSteps);
+    } catch (e) {
+      console.error('Failed to send next-steps message after OTP verification:', e);
+    }
+
     res.json({
       message: 'Email verified successfully',
       emailVerified: true
@@ -748,6 +763,64 @@ export const resendOTP = async (req, res) => {
     });
   } catch (error) {
     console.error('Resend OTP error:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+};
+
+export const suspendUser = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const user = await userModel.findById(id);
+
+    if (!user) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+
+    if (user.role === 'admin') {
+      return res.status(400).json({ error: 'Cannot suspend admin users' });
+    }
+
+    if (user.status === 'suspended') {
+      return res.status(400).json({ error: 'User is already suspended' });
+    }
+
+    await userModel.update(id, { status: 'suspended' });
+    const updatedUser = await userModel.findById(id);
+    const { password, ...userResponse } = updatedUser;
+
+    res.json({
+      message: 'User suspended successfully. They will not be able to log in until reactivated.',
+      user: userResponse
+    });
+  } catch (error) {
+    console.error('Suspend user error:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+};
+
+export const unsuspendUser = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const user = await userModel.findById(id);
+
+    if (!user) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+
+    if (user.status !== 'suspended') {
+      return res.status(400).json({ error: 'User is not suspended' });
+    }
+
+    await userModel.update(id, { status: 'approved', approvalType: 'permanent', trialExpiresAt: null });
+    const updatedUser = await userModel.findById(id);
+    const { password, ...userResponse } = updatedUser;
+
+    res.json({
+      message: 'User reactivated successfully.',
+      user: userResponse
+    });
+  } catch (error) {
+    console.error('Unsuspend user error:', error);
     res.status(500).json({ error: 'Internal server error' });
   }
 };

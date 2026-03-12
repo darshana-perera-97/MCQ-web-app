@@ -12,6 +12,8 @@ import {
   toggleComplete,
   approveUser,
   rejectUser,
+  suspendUser,
+  unsuspendUser,
   verifyOTP,
   resendOTP,
   updateNotificationPreferences
@@ -38,6 +40,8 @@ router.put('/:id', adminAuth, updateUser);
 router.delete('/:id', adminAuth, deleteUser);
 router.post('/:id/approve', adminAuth, approveUser);
 router.post('/:id/reject', adminAuth, rejectUser);
+router.post('/:id/suspend', adminAuth, suspendUser);
+router.post('/:id/unsuspend', adminAuth, unsuspendUser);
 
 export default router;
 

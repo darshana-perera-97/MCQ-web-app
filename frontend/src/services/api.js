@@ -108,6 +108,16 @@ export const userAPI = {
     adminSecret,
   }),
 
+  suspendUser: (userId, adminSecret) => apiRequest(`/users/${userId}/suspend`, {
+    method: 'POST',
+    adminSecret,
+  }),
+
+  unsuspendUser: (userId, adminSecret) => apiRequest(`/users/${userId}/unsuspend`, {
+    method: 'POST',
+    adminSecret,
+  }),
+
   verifyOTP: (email, otp) => apiRequest('/users/verify-otp', {
     method: 'POST',
     body: JSON.stringify({ email, otp }),

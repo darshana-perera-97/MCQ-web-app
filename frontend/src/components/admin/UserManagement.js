@@ -66,6 +66,7 @@ export function UserManagement() {
 
   const pendingUsers = users.filter(u => (u.role === 'student' || !u.role) && u.status === 'pending');
   const approvedUsers = users.filter(u => (u.role === 'student' || !u.role) && u.status === 'approved');
+  const suspendedUsers = users.filter(u => (u.role === 'student' || !u.role) && u.status === 'suspended');
   const rejectedUsers = users.filter(u => (u.role === 'student' || !u.role) && u.status === 'rejected');
 
   const handleApprove = async (userId, trialDays = 0) => {
@@ -90,6 +91,30 @@ export function UserManagement() {
       alert('User rejected successfully!');
     } catch (err) {
       alert(err.message || 'Failed to reject user');
+    }
+  };
+
+  const handleSuspend = async (userId) => {
+    if (!window.confirm('Suspend this user? They will not be able to log in until you reactivate them.')) return;
+    try {
+      const adminSecret = getAdminSecret();
+      await userAPI.suspendUser(userId, adminSecret);
+      await loadUsers();
+      alert('User suspended successfully.');
+    } catch (err) {
+      alert(err.message || 'Failed to suspend user');
+    }
+  };
+
+  const handleUnsuspend = async (userId) => {
+    if (!window.confirm('Reactivate this user? They will be able to log in again.')) return;
+    try {
+      const adminSecret = getAdminSecret();
+      await userAPI.unsuspendUser(userId, adminSecret);
+      await loadUsers();
+      alert('User reactivated successfully.');
+    } catch (err) {
+      alert(err.message || 'Failed to reactivate user');
     }
   };
 
@@ -222,7 +247,7 @@ export function UserManagement() {
       </div>
 
       {/* Stats Cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-4 gap-4 mb-6">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4 mb-6">
         <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-4">
           <div className="text-sm text-gray-500 mb-1">Total Users</div>
           <div className="text-2xl font-semibold text-gray-900">{users.filter(u => u.role === 'student' || !u.role).length}</div>
@@ -234,6 +259,10 @@ export function UserManagement() {
         <div className="bg-green-50 rounded-xl shadow-sm border border-green-200 p-4">
           <div className="text-sm text-green-700 mb-1">Approved</div>
           <div className="text-2xl font-semibold text-green-900">{approvedUsers.length}</div>
+        </div>
+        <div className="bg-amber-50 rounded-xl shadow-sm border border-amber-200 p-4">
+          <div className="text-sm text-amber-700 mb-1">Suspended</div>
+          <div className="text-2xl font-semibold text-amber-900">{suspendedUsers.length}</div>
         </div>
         <div className="bg-red-50 rounded-xl shadow-sm border border-red-200 p-4">
           <div className="text-sm text-red-700 mb-1">Rejected</div>
@@ -275,6 +304,20 @@ export function UserManagement() {
           >
             Approved
           </Button>
+          <Button
+            variant={statusFilter === 'suspended' ? 'default' : 'outline'}
+            onClick={() => setStatusFilter('suspended')}
+            className={`h-12 px-4 rounded-xl ${statusFilter === 'suspended' ? 'bg-gradient-to-r from-[#667eea] to-[#764ba2] hover:opacity-90 text-white shadow-sm' : ''}`}
+          >
+            Suspended ({suspendedUsers.length})
+          </Button>
+          <Button
+            variant={statusFilter === 'rejected' ? 'default' : 'outline'}
+            onClick={() => setStatusFilter('rejected')}
+            className={`h-12 px-4 rounded-xl ${statusFilter === 'rejected' ? 'bg-gradient-to-r from-[#667eea] to-[#764ba2] hover:opacity-90 text-white shadow-sm' : ''}`}
+          >
+            Rejected ({rejectedUsers.length})
+          </Button>
         </div>
       </div>
 
@@ -311,6 +354,8 @@ export function UserManagement() {
                             ? 'bg-yellow-100 text-yellow-800'
                             : user.status === 'approved'
                             ? 'bg-green-100 text-green-800'
+                            : user.status === 'suspended'
+                            ? 'bg-amber-100 text-amber-800'
                             : user.status === 'rejected'
                             ? 'bg-red-100 text-red-800'
                             : 'bg-gray-100 text-gray-800'
@@ -384,12 +429,54 @@ export function UserManagement() {
                               <Button
                                 variant="ghost"
                                 size="sm"
+                                onClick={() => handleSuspend(user.id)}
+                                className="rounded-lg hover:bg-amber-50 hover:text-amber-600"
+                                title="Suspend user"
+                              >
+                                <X className="w-4 h-4" />
+                              </Button>
+                              <Button
+                                variant="ghost"
+                                size="sm"
                                 onClick={() => handleDelete(user.id)}
                                 className="rounded-lg hover:bg-red-50 hover:text-red-600"
                               >
                                 <Trash2 className="w-4 h-4" />
                               </Button>
                             </>
+                          )}
+                          {user.status === 'suspended' && (
+                            <>
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => handleUnsuspend(user.id)}
+                                className="rounded-lg hover:bg-green-50 hover:text-green-600"
+                                title="Reactivate user"
+                              >
+                                <Check className="w-4 h-4" />
+                              </Button>
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => handleDelete(user.id)}
+                                className="rounded-lg hover:bg-red-50 hover:text-red-600"
+                                title="Delete from list"
+                              >
+                                <Trash2 className="w-4 h-4" />
+                              </Button>
+                            </>
+                          )}
+                          {user.status === 'rejected' && (
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => handleDelete(user.id)}
+                              className="rounded-lg hover:bg-red-50 hover:text-red-600"
+                              title="Delete from list"
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </Button>
                           )}
                         </div>
                       </td>
@@ -490,6 +577,8 @@ export function UserManagement() {
                         ? 'bg-yellow-100 text-yellow-800'
                         : user.status === 'approved'
                         ? 'bg-green-100 text-green-800'
+                        : user.status === 'suspended'
+                        ? 'bg-amber-100 text-amber-800'
                         : user.status === 'rejected'
                         ? 'bg-red-100 text-red-800'
                         : 'bg-gray-100 text-gray-800'
@@ -590,6 +679,15 @@ export function UserManagement() {
                       <Button
                         variant="outline"
                         size="sm"
+                        onClick={() => handleSuspend(user.id)}
+                        className="flex-1 rounded-lg gap-2 text-amber-600 hover:bg-amber-50"
+                      >
+                        <X className="w-4 h-4" />
+                        Suspend
+                      </Button>
+                      <Button
+                        variant="outline"
+                        size="sm"
                         onClick={() => handleDelete(user.id)}
                         className="flex-1 rounded-lg gap-2 text-red-600 hover:bg-red-50"
                       >
@@ -597,6 +695,39 @@ export function UserManagement() {
                         Delete
                       </Button>
                     </>
+                  )}
+                  {user.status === 'suspended' && (
+                    <>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => handleUnsuspend(user.id)}
+                        className="flex-1 rounded-lg gap-2 text-green-600 hover:bg-green-50"
+                      >
+                        <Check className="w-4 h-4" />
+                        Reactivate
+                      </Button>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => handleDelete(user.id)}
+                        className="flex-1 rounded-lg gap-2 text-red-600 hover:bg-red-50"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                        Delete
+                      </Button>
+                    </>
+                  )}
+                  {user.status === 'rejected' && (
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => handleDelete(user.id)}
+                      className="flex-1 rounded-lg gap-2 text-red-600 hover:bg-red-50"
+                    >
+                      <Trash2 className="w-4 h-4" />
+                      Delete
+                    </Button>
                   )}
                 </div>
               </div>
