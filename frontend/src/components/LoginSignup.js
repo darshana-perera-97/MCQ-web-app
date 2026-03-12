@@ -5,7 +5,7 @@ import { useLanguage } from '../context/LanguageContext';
 import { Button } from './ui/button';
 import { Input } from './ui/input';
 import { Label } from './ui/label';
-import { GraduationCap, Languages, Home } from 'lucide-react';
+import { GraduationCap, Languages, Home, CheckCircle2, Building2, Phone, Mail } from 'lucide-react';
 import { MultiStepSignup } from './MultiStepSignup';
 import { OTPVerification } from './OTPVerification';
 import { RecaptchaWidget, useRecaptchaRequired } from './RecaptchaWidget';
@@ -17,6 +17,7 @@ export function LoginSignup() {
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const [showOTP, setShowOTP] = useState(false);
+  const [showActivationInstructions, setShowActivationInstructions] = useState(false);
   const [signupData, setSignupData] = useState(null);
   const [loginOTPData, setLoginOTPData] = useState(null); // For OTP from login flow
   const recaptchaRef = useRef(null);
@@ -106,18 +107,21 @@ export function LoginSignup() {
   const handleOTPVerified = () => {
     setShowOTP(false);
     if (loginOTPData) {
-      // OTP verified from login flow - try to login again
       alert('Email verified successfully! Please login again.');
       setLoginOTPData(null);
       setPassword(''); // Clear password so user can re-enter
     } else {
-      // OTP verified from signup flow
-    alert('Email verified successfully! Your account is pending admin approval. You will be able to login once approved.');
+      // OTP verified from signup flow → show activation instructions
+      setShowActivationInstructions(true);
+    }
+  };
+
+  const handleActivationDone = () => {
+    setShowActivationInstructions(false);
     setIsLogin(true);
-      setEmail(signupData?.email || '');
+    setEmail(signupData?.email || '');
     setPassword('');
     setSignupData(null);
-    }
   };
 
   const handleOTPCancel = () => {
@@ -182,6 +186,77 @@ export function LoginSignup() {
                 onVerified={handleOTPVerified}
                 onCancel={handleOTPCancel}
               />
+            ) : showActivationInstructions ? (
+              <div className="space-y-6 max-w-lg mx-auto">
+                <div className="flex justify-center">
+                  <div className="inline-flex items-center justify-center w-14 h-14 rounded-full bg-green-100 border border-green-200">
+                    <CheckCircle2 className="w-8 h-8 text-green-600" />
+                  </div>
+                </div>
+                <h3 className="text-xl font-semibold text-gray-900 text-center">
+                  {language === 'si' ? 'ඔබේ ගිණුම සාර්ථකව සාදා ඇත' : 'Account created successfully'}
+                </h3>
+                <p className="text-gray-600 text-sm leading-relaxed">
+                  {language === 'si'
+                    ? 'ගිණුම සක්‍රිය කිරීමට කරුණාකර පහත බැංකු ගිණුම් වලින් එකකට එක් වර ගාස්තුව LKR 399 ගෙවන්න. ගෙවීමෙන් පසු, ගෙවීම් සල්ලිපතේ ඡායාරූපය හෝ තිර ගතිය පහත WhatsApp අංකයට හෝ විද්‍යුත් තැපැල් ලිපිනයට යවන්න. ලියාපදිංචි වීමේදී භාවිතා කළ සම්පූර්ණ නම සහ විද්‍යුත් තැපැල් ලිපිනය ඇතුළත් කරන්න. අප කණ්ඩායම ඔබේ ගිණුම පැය 2-3 ඇතුළත සක්‍රිය කරනු ඇත.'
+                    : 'To activate your account, please pay a one-time fee of LKR 399 to one of the bank accounts below. After payment, send a photo or screenshot of the payment slip to the WhatsApp number or email address given below. Include the full name and email address you used to register. Your account will be activated by our team within 2–3 hours.'}
+                </p>
+
+                <div className="space-y-4">
+                  <p className="text-sm font-medium text-gray-700">
+                    {language === 'si' ? 'බැංකු විස්තර' : 'Bank details'}
+                  </p>
+                  <div className="grid gap-4 sm:grid-cols-2">
+                    <div className="p-4 rounded-xl border border-gray-200 bg-gray-50/50 space-y-2">
+                      <div className="flex items-center gap-2 text-gray-700 font-medium">
+                        <Building2 className="w-4 h-4 text-blue-600" />
+                        Bank of Ceylon
+                      </div>
+                      <dl className="text-sm text-gray-600 space-y-1">
+                        <div><span className="font-medium text-gray-700">Account name:</span> MCQ Exam Registration</div>
+                        <div><span className="font-medium text-gray-700">Account no:</span> 1234567890</div>
+                        <div><span className="font-medium text-gray-700">Branch:</span> Colombo Main</div>
+                      </dl>
+                    </div>
+                    <div className="p-4 rounded-xl border border-gray-200 bg-gray-50/50 space-y-2">
+                      <div className="flex items-center gap-2 text-gray-700 font-medium">
+                        <Building2 className="w-4 h-4 text-blue-600" />
+                        Commercial Bank
+                      </div>
+                      <dl className="text-sm text-gray-600 space-y-1">
+                        <div><span className="font-medium text-gray-700">Account name:</span> NexGen AI Education</div>
+                        <div><span className="font-medium text-gray-700">Account no:</span> 9876543210</div>
+                        <div><span className="font-medium text-gray-700">Branch:</span> Kandy</div>
+                      </dl>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="p-4 rounded-xl border border-blue-100 bg-blue-50/50 space-y-2">
+                  <p className="text-sm font-medium text-gray-800">
+                    {language === 'si' ? 'ගෙවීම් සල්ලිපත යවන්න' : 'Send your payment slip to'}
+                  </p>
+                  <div className="flex flex-col sm:flex-row sm:items-center gap-2 text-sm text-gray-700">
+                    <a href="https://wa.me/94771234567" target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-2 text-green-700 hover:underline font-medium">
+                      <Phone className="w-4 h-4" /> +94 77 123 4567
+                    </a>
+                    <span className="hidden sm:inline text-gray-400"> or </span>
+                    <a href="mailto:exam-admin@nexgenai.asia" className="inline-flex items-center gap-2 text-blue-700 hover:underline font-medium">
+                      <Mail className="w-4 h-4" /> exam-admin@nexgenai.asia
+                    </a>
+                  </div>
+                  <p className="text-xs text-gray-600 mt-1">
+                    {language === 'si' ? 'ඔබ ලියාපදිංචි වියේ කළ නම සහ විද්‍යුත් තැපැල් ලිපිනය ඇතුළත් කරන්න.' : 'Include the name and email you used to register.'}
+                  </p>
+                </div>
+
+                <Button
+                  onClick={handleActivationDone}
+                  className="w-full h-11 rounded-lg bg-gray-900 hover:bg-gray-800 text-white font-medium"
+                >
+                  {language === 'si' ? 'පිවිසුමට යන්න' : 'Go to Login'}
+                </Button>
+              </div>
             ) : isLogin ? (
               <form onSubmit={handleLogin} className="space-y-5">
                 <div className="space-y-2">

@@ -1,7 +1,22 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from './ui/button';
-import { GraduationCap, BookOpen, Users, TrendingUp, ChevronLeft, ChevronRight, Bell, Sparkles, Award, Zap, CheckCircle2 } from 'lucide-react';
+import {
+  GraduationCap,
+  BookOpen,
+  Users,
+  TrendingUp,
+  ChevronLeft,
+  ChevronRight,
+  Bell,
+  Sparkles,
+  Award,
+  Zap,
+  CheckCircle2,
+  UserPlus,
+  CreditCard,
+  CheckCircle,
+} from 'lucide-react';
 import { notificationAPI } from '../services/api';
 import { BACKEND_URL } from '../config/api';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -137,7 +152,7 @@ export function LandingPageSinhala() {
             </motion.div>
           </div>
         </div>
-        
+
         {/* Scroll Indicator */}
         <div className="absolute bottom-8 left-1/2 transform -translate-x-1/2">
           <motion.div
@@ -147,6 +162,116 @@ export function LandingPageSinhala() {
           >
             <div className="w-1.5 h-1.5 bg-white/70 rounded-full"></div>
           </motion.div>
+        </div>
+      </div>
+
+      {/* How to Get Started in 3 Simple Steps (Sinhala) */}
+      <div className="bg-gradient-to-b from-gray-50 via-white to-gray-50 border-b border-gray-100">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-14 sm:py-18">
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+            transition={{ duration: 0.5 }}
+            className="text-center mb-10 sm:mb-14"
+          >
+            <p className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-white shadow-sm text-xs sm:text-sm font-medium text-[#667eea] border border-[#667eea]/10 mb-3">
+              <Sparkles className="w-3.5 h-3.5" />
+              ක්‍රියාවලිය මෙසේය
+            </p>
+            <h2 className="text-2xl sm:text-3xl font-bold text-gray-900">
+              සරල අදියර 3කින් ආරම්භ කරන්නේ කෙසේද
+            </h2>
+            <p className="mt-2 text-sm sm:text-base text-gray-600 max-w-2xl mx-auto">
+              ඔබේ ගිණුම සාදා, ගෙවීම සම්පූර්ණ කර, සම්පූර්ණ ප්‍රවේශය ලබා ගැනීමට අදියර 3ක මෙම මාර්ගෝපදේශය අනුගමනය කරන්න.
+            </p>
+          </motion.div>
+
+          <div className="grid gap-6 sm:gap-8 md:grid-cols-3 relative">
+            <div className="hidden md:block absolute inset-y-6 left-1/2 w-px bg-gradient-to-b from-[#667eea]/0 via-[#667eea]/15 to-[#667eea]/0 pointer-events-none" />
+
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true }}
+              transition={{ duration: 0.4 }}
+              className="relative bg-violet-50/80 rounded-2xl p-6 sm:p-7 shadow-sm border border-violet-100 flex flex-col overflow-hidden"
+            >
+              <div className="absolute inset-x-0 top-0 h-1 rounded-t-2xl bg-violet-500" />
+              <div className="inline-flex items-center justify-center w-fit px-3 py-1.5 rounded-full bg-[#667eea] text-white text-xs font-semibold shadow-md mb-4">
+                1 වන අදියර
+              </div>
+              <div className="mb-3 inline-flex items-center justify-center w-11 h-11 rounded-2xl bg-[#667eea]/10 text-[#667eea]">
+                <UserPlus className="w-5 h-5" />
+              </div>
+              <h3 className="text-lg sm:text-xl font-semibold text-gray-900 mb-2">
+                ලියාපදිංචි වන්න
+              </h3>
+              <p className="text-sm sm:text-base text-gray-600 leading-relaxed">
+                අප වේදිකාවේ ගිණුම සාදන්න.{' '}
+                <button
+                  type="button"
+                  onClick={() => navigate('/login')}
+                  className="text-[#667eea] font-semibold hover:underline focus:outline-none"
+                >
+                  ගිණුම සාදන්න (මෙතැනින්)
+                </button>
+              </p>
+            </motion.div>
+
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true }}
+              transition={{ duration: 0.4, delay: 0.1 }}
+              className="relative bg-emerald-50/80 rounded-2xl p-6 sm:p-7 shadow-sm border border-emerald-100 flex flex-col overflow-hidden"
+            >
+              <div className="absolute inset-x-0 top-0 h-1 rounded-t-2xl bg-emerald-500" />
+              <div className="inline-flex items-center justify-center w-fit px-3 py-1.5 rounded-full bg-[#667eea] text-white text-xs font-semibold shadow-md mb-4">
+                2 වන අදියර
+              </div>
+              <div className="mb-3 inline-flex items-center justify-center w-11 h-11 rounded-2xl bg-emerald-50 text-emerald-600">
+                <CreditCard className="w-5 h-5" />
+              </div>
+              <h3 className="text-lg sm:text-xl font-semibold text-gray-900 mb-2">
+                සක්‍රිය කරන්න
+              </h3>
+              <p className="text-sm sm:text-base text-gray-600 leading-relaxed mb-3">
+                අප බැංකු ගිණුමට එක් වර ගෙවීමක් සම්පූර්ණ කරන්න.
+              </p>
+              <div className="text-xs sm:text-sm text-gray-700 bg-white/70 rounded-xl p-3 space-y-2 border border-emerald-100">
+                <p className="font-medium text-gray-800">බැංකු විස්තර:</p>
+                <p><span className="font-medium">Bank of Ceylon</span> — ගිණුම: MCQ Exam Registration, අංක: 1234567890, ශාඛාව: Colombo Main</p>
+                <p><span className="font-medium">Commercial Bank</span> — ගිණුම: NexGen AI Education, අංක: 9876543210, ශාඛාව: Kandy</p>
+              </div>
+            </motion.div>
+
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true }}
+              transition={{ duration: 0.4, delay: 0.2 }}
+              className="relative bg-orange-50/80 rounded-2xl p-6 sm:p-7 shadow-sm border border-orange-100 flex flex-col overflow-hidden"
+            >
+              <div className="absolute inset-x-0 top-0 h-1 rounded-t-2xl bg-orange-500" />
+              <div className="inline-flex items-center justify-center w-fit px-3 py-1.5 rounded-full bg-[#667eea] text-white text-xs font-semibold shadow-md mb-4">
+                3 වන අදියර
+              </div>
+              <div className="mb-3 inline-flex items-center justify-center w-11 h-11 rounded-2xl bg-indigo-50 text-indigo-600">
+                <CheckCircle className="w-5 h-5" />
+              </div>
+              <h3 className="text-lg sm:text-xl font-semibold text-gray-900 mb-2">
+                ප්‍රවේශය ලබා ගන්න
+              </h3>
+              <p className="text-sm sm:text-base text-gray-600 leading-relaxed">
+                ඔබේ ගෙවීම් තහවුරුකිරීම WhatsApp{' '}
+                <a href="https://wa.me/94771234567" target="_blank" rel="noopener noreferrer" className="text-green-600 font-semibold hover:underline">+94 77 123 4567</a>
+                {' '}හෝ විද්‍යුත් තැපෑල{' '}
+                <a href="mailto:exam-admin@nexgenai.asia" className="text-[#667eea] font-semibold hover:underline">exam-admin@nexgenai.asia</a>ට යවන්න.
+                පරිපාලකයා විසින් සත්‍යාපනය කළ පසු ඔබේ ගිණුම සම්පූර්ණයෙන් සක්‍රිය වේ!
+              </p>
+            </motion.div>
+          </div>
         </div>
       </div>
 

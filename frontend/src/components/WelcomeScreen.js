@@ -92,10 +92,6 @@ export function WelcomeScreen() {
           </button>
         </div>
 
-        {/* Footer */}
-        <div className="text-center mt-12 text-gray-500 text-sm">
-          <p>Built with React • Tailwind CSS</p>
-        </div>
       </div>
     </div>
   );

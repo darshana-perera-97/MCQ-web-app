@@ -203,6 +203,90 @@ export async function sendOTPEmail(email, name, otp) {
 }
 
 /**
+ * Email template for "account created - next steps to activate"
+ */
+function getAccountCreatedNextStepsEmailTemplate(name) {
+  return `
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Account Created - Next Steps</title>
+</head>
+<body style="margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; background-color: #f3f4f6;">
+  <table role="presentation" style="width: 100%; border-collapse: collapse; background-color: #f3f4f6; padding: 20px;">
+    <tr>
+      <td align="center" style="padding: 20px 0;">
+        <table role="presentation" style="max-width: 600px; width: 100%; background-color: #ffffff; border-radius: 16px; box-shadow: 0 4px 24px rgba(0, 0, 0, 0.06); border: 1px solid #e5e7eb; overflow: hidden;">
+          <tr>
+            <td style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); padding: 40px 30px; text-align: center;">
+              <h1 style="color: #ffffff; font-size: 28px; font-weight: 600; margin: 0;">Step 1 Completed</h1>
+              <p style="color: rgba(255,255,255,0.9); font-size: 16px; margin: 12px 0 0 0;">Your account has been created successfully</p>
+            </td>
+          </tr>
+          <tr>
+            <td style="padding: 40px 30px;">
+              <p style="color: #374151; font-size: 16px; line-height: 1.6; margin: 0 0 20px 0;">Hello <strong>${name}</strong>,</p>
+              <p style="color: #374151; font-size: 16px; line-height: 1.6; margin: 0 0 24px 0;">To activate your account and get full access, please complete <strong>Step 2</strong> and <strong>Step 3</strong> below.</p>
+              
+              <div style="background-color: #f0fdf4; border: 1px solid #bbf7d0; border-radius: 12px; padding: 20px; margin-bottom: 20px;">
+                <p style="color: #166534; font-size: 15px; font-weight: 600; margin: 0 0 8px 0;">Step 2 – Activate</p>
+                <p style="color: #374151; font-size: 14px; line-height: 1.6; margin: 0;">Complete a one-time payment of LKR 399 to one of our bank accounts:</p>
+                <ul style="color: #374151; font-size: 14px; line-height: 1.8; margin: 12px 0 0 0; padding-left: 20px;">
+                  <li><strong>Bank of Ceylon</strong> — Account: MCQ Exam Registration, No: 1234567890, Branch: Colombo Main</li>
+                  <li><strong>Commercial Bank</strong> — Account: NexGen AI Education, No: 9876543210, Branch: Kandy</li>
+                </ul>
+              </div>
+              
+              <div style="background-color: #eff6ff; border: 1px solid #bfdbfe; border-radius: 12px; padding: 20px;">
+                <p style="color: #1e40af; font-size: 15px; font-weight: 600; margin: 0 0 8px 0;">Step 3 – Get Access</p>
+                <p style="color: #374151; font-size: 14px; line-height: 1.6; margin: 0;">Send your payment slip (screenshot or photo) to our WhatsApp <strong>+94 77 123 4567</strong> or Email <strong>exam-admin@nexgenai.asia</strong>. Include the name and email you used to register. Your account will be activated within 2–3 hours after verification.</p>
+              </div>
+              
+              <p style="color: #6b7280; font-size: 14px; line-height: 1.6; margin: 24px 0 0 0;">If you have any questions, contact us at exam-admin@nexgenai.asia.</p>
+            </td>
+          </tr>
+          <tr>
+            <td style="background-color: #f9fafb; padding: 30px; text-align: center; border-top: 1px solid #e5e7eb;">
+              <p style="color: #6b7280; font-size: 12px; margin: 0;">© ${new Date().getFullYear()} Learning Management System.</p>
+            </td>
+          </tr>
+        </table>
+      </td>
+    </tr>
+  </table>
+</body>
+</html>
+  `;
+}
+
+/**
+ * Send "account created - next steps to activate" email
+ */
+export async function sendAccountCreatedNextStepsEmail(email, name) {
+  try {
+    const transporter = await getTransporter();
+    const settings = await settingsModel.read();
+    const smtp = settings.smtp || {};
+
+    const mailOptions = {
+      from: `"Learning Management System" <${smtp.user}>`,
+      to: email,
+      subject: 'Account Created – Complete Step 2 & 3 to Activate',
+      html: getAccountCreatedNextStepsEmailTemplate(name),
+    };
+
+    const info = await transporter.sendMail(mailOptions);
+    console.log('Account created next-steps email sent:', info.messageId);
+    return { success: true, messageId: info.messageId };
+  } catch (error) {
+    console.error('Error sending account created next-steps email:', error);
+    throw error;
+  }
+}
+
+/**
  * Send account approval email
  */
 export async function sendApprovalEmail(email, name) {

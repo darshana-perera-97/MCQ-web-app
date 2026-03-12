@@ -7,7 +7,7 @@ import { SummaryModel } from '../models/SummaryModel.js';
 import { StructuredQuestionModel } from '../models/StructuredQuestionModel.js';
 import { StructuredWritingModel } from '../models/StructuredWritingModel.js';
 import { v4 as uuidv4 } from 'uuid';
-import { sendOTPEmail, sendApprovalEmail } from '../services/emailService.js';
+import { sendOTPEmail, sendApprovalEmail, sendAccountCreatedNextStepsEmail } from '../services/emailService.js';
 import { sendWhatsAppMessage, getWhatsAppStatus } from '../services/whatsappService.js';
 import { verifyRecaptcha } from '../services/recaptchaService.js';
 import { PLATFORM_URL } from '../config/constants.js';
@@ -74,6 +74,33 @@ async function sendOTP(email, name, otp, phone = null) {
   }
 
   return results;
+}
+
+/**
+ * Send "account created - complete step 2 & 3 to activate" via email and WhatsApp
+ */
+async function sendAccountCreatedNextSteps(email, name, phone = null) {
+  const nextStepsMessage = `Hello ${name},\n\n✅ *Step 1 is successfully completed.* Your account has been created.\n\nTo *activate* your account, please complete:\n\n*Step 2 – Activate:* Pay LKR 399 to one of our bank accounts:\n• Bank of Ceylon — Account: MCQ Exam Registration, No: 1234567890, Branch: Colombo Main\n• Commercial Bank — Account: NexGen AI Education, No: 9876543210, Branch: Kandy\n\n*Step 3 – Get Access:* Send your payment slip to WhatsApp +94 77 123 4567 or Email exam-admin@nexgenai.asia (include your name and email). Your account will be activated within 2–3 hours.\n\nIf you have questions, contact exam-admin@nexgenai.asia.`;
+
+  try {
+    await sendAccountCreatedNextStepsEmail(email, name);
+  } catch (e) {
+    console.error('Failed to send account-created next-steps email:', e);
+  }
+
+  const phoneToUse = phone && String(phone).trim() ? String(phone).trim() : null;
+  if (phoneToUse) {
+    try {
+      const settings = await settingsModel.read();
+      const notificationsEnabled = settings.notifications || { emailEnabled: true, whatsappEnabled: true };
+      const whatsappEnabled = notificationsEnabled.whatsappEnabled !== false;
+      if (whatsappEnabled && getWhatsAppStatus().isConnected) {
+        await sendWhatsAppMessage(phoneToUse, nextStepsMessage);
+      }
+    } catch (e) {
+      console.error('Failed to send account-created next-steps WhatsApp:', e);
+    }
+  }
 }
 
 /**
@@ -216,6 +243,9 @@ export const signup = async (req, res) => {
 
     // Send OTP via both email and WhatsApp
     const otpResults = await sendOTP(email, name, otp, phone);
+
+    // Send "Step 1 complete - do Step 2 & 3 to activate" via email and WhatsApp
+    await sendAccountCreatedNextSteps(email, name, phone);
 
     // Build response message based on what was sent
     let message = 'User created successfully. ';
