@@ -51,19 +51,18 @@ async function apiRequest(endpoint, options = {}) {
 
 // User API
 export const userAPI = {
-  signup: (formData) => apiRequest('/users/signup', {
+  signup: (formData, recaptchaToken) => apiRequest('/users/signup', {
     method: 'POST',
-    body: JSON.stringify(formData),
+    body: JSON.stringify({ ...formData, recaptchaToken: recaptchaToken || undefined }),
   }),
 
-  login: async (email, password) => {
+  login: async (email, password, recaptchaToken) => {
     try {
       return await apiRequest('/users/login', {
-    method: 'POST',
-    body: JSON.stringify({ email, password }),
+        method: 'POST',
+        body: JSON.stringify({ email, password, recaptchaToken: recaptchaToken || undefined }),
       });
     } catch (error) {
-      // Re-throw with response data preserved
       throw error;
     }
   },
@@ -312,9 +311,9 @@ export const settingsAPI = {
 
 // Admin API
 export const adminAPI = {
-  login: (email, password) => apiRequest('/admin/login', {
+  login: (email, password, recaptchaToken) => apiRequest('/admin/login', {
     method: 'POST',
-    body: JSON.stringify({ email, password }),
+    body: JSON.stringify({ email, password, recaptchaToken: recaptchaToken || undefined }),
   }),
 };
 

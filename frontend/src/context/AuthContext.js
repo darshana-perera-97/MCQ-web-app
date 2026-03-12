@@ -36,9 +36,9 @@ export const AuthProvider = ({ children }) => {
     setLoading(false);
   }, []);
 
-  const login = async (email, password) => {
+  const login = async (email, password, recaptchaToken) => {
     try {
-      const response = await userAPI.login(email, password);
+      const response = await userAPI.login(email, password, recaptchaToken);
       const userData = response.user;
       setUser(userData);
       localStorage.setItem('user', JSON.stringify(userData));
@@ -66,9 +66,9 @@ export const AuthProvider = ({ children }) => {
     }
   };
 
-  const signup = async (formData) => {
+  const signup = async (formData, recaptchaToken) => {
     try {
-      const response = await userAPI.signup(formData);
+      const response = await userAPI.signup(formData, recaptchaToken);
       // Don't auto-login after signup - user needs admin approval
       return { success: true, message: response.message || 'Account created successfully. Waiting for admin approval.' };
     } catch (error) {

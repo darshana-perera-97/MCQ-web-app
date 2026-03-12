@@ -9,6 +9,7 @@ import { StructuredWritingModel } from '../models/StructuredWritingModel.js';
 import { v4 as uuidv4 } from 'uuid';
 import { sendOTPEmail, sendApprovalEmail } from '../services/emailService.js';
 import { sendWhatsAppMessage, getWhatsAppStatus } from '../services/whatsappService.js';
+import { verifyRecaptcha } from '../services/recaptchaService.js';
 import { PLATFORM_URL } from '../config/constants.js';
 
 const userModel = new UserModel();
@@ -125,9 +126,10 @@ async function sendApprovalNotification(email, name, phone = null) {
 
 export const signup = async (req, res) => {
   try {
-    const { 
-      email, 
-      password, 
+    const {
+      recaptchaToken,
+      email,
+      password,
       name,
       // Contact details
       phone,
@@ -151,6 +153,11 @@ export const signup = async (req, res) => {
       graduationYear,
       additionalEducation
     } = req.body;
+
+    const recaptchaResult = await verifyRecaptcha(recaptchaToken);
+    if (!recaptchaResult.success) {
+      return res.status(400).json({ error: recaptchaResult.message || 'Captcha verification failed' });
+    }
 
     if (!email || !password || !name) {
       return res.status(400).json({ error: 'Email, password, and name are required' });
@@ -242,7 +249,12 @@ export const signup = async (req, res) => {
 
 export const login = async (req, res) => {
   try {
-    const { email, password } = req.body;
+    const { email, password, recaptchaToken } = req.body;
+
+    const recaptchaResult = await verifyRecaptcha(recaptchaToken);
+    if (!recaptchaResult.success) {
+      return res.status(400).json({ error: recaptchaResult.message || 'Captcha verification failed' });
+    }
 
     if (!email || !password) {
       return res.status(400).json({ error: 'Email and password are required' });

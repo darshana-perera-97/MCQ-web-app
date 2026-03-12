@@ -1,25 +1,33 @@
-import { useState } from 'react';
+import { useState, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from './ui/button';
 import { Input } from './ui/input';
 import { Label } from './ui/label';
 import { Shield, Lock, Mail, ArrowRight } from 'lucide-react';
 import { adminAPI, setAdminSecret } from '../services/api';
+import { RecaptchaWidget, useRecaptchaRequired } from './RecaptchaWidget';
 
 export function AdminLogin() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
+  const recaptchaRef = useRef(null);
+  const recaptchaRequired = useRecaptchaRequired();
   const navigate = useNavigate();
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError('');
+    const recaptchaToken = recaptchaRef.current?.getValue?.() || '';
+    if (recaptchaRequired && !recaptchaToken) {
+      setError('Please complete the captcha');
+      return;
+    }
     setLoading(true);
 
     try {
-      const response = await adminAPI.login(email, password);
+      const response = await adminAPI.login(email, password, recaptchaToken);
       if (response.message) {
         // Store admin secret for future API calls
         setAdminSecret(response.adminSecret || process.env.REACT_APP_ADMIN_SECRET || 'admin123');
@@ -28,6 +36,7 @@ export function AdminLogin() {
       }
     } catch (err) {
       setError(err.message || 'Invalid email or password. Please try again.');
+      recaptchaRef.current?.reset?.();
     } finally {
       setLoading(false);
     }
@@ -80,6 +89,8 @@ export function AdminLogin() {
               className="rounded-lg border-gray-300 focus:border-[#00c6ff] focus:ring-2 focus:ring-[#00c6ff]/30 focus:ring-offset-0 h-11"
             />
           </div>
+
+          <RecaptchaWidget ref={recaptchaRef} />
 
           {error && (
             <div className="p-3 bg-red-50 border border-red-200 rounded-lg text-red-700 text-sm flex items-center gap-2">

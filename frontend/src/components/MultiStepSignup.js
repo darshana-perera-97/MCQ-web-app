@@ -11,7 +11,7 @@ const steps = [
   { id: 3, title: 'Education', icon: GraduationCap },
 ];
 
-export function MultiStepSignup({ onSubmit, loading, error }) {
+export function MultiStepSignup({ onSubmit, getRecaptchaToken, loading, error }) {
   const [currentStep, setCurrentStep] = useState(1);
   const [formData, setFormData] = useState({
     // Step 1: Basic Info
@@ -115,9 +115,9 @@ export function MultiStepSignup({ onSubmit, loading, error }) {
   const handleSubmit = (e) => {
     e.preventDefault();
     if (validateStep(currentStep)) {
-      // Prepare final data (exclude confirmPassword)
       const { confirmPassword, ...submitData } = formData;
-      onSubmit(submitData);
+      const recaptchaToken = typeof getRecaptchaToken === 'function' ? getRecaptchaToken() : '';
+      onSubmit(submitData, recaptchaToken);
     }
   };
 

@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { useLanguage } from '../context/LanguageContext';
@@ -8,6 +8,7 @@ import { Label } from './ui/label';
 import { GraduationCap, Languages, Home } from 'lucide-react';
 import { MultiStepSignup } from './MultiStepSignup';
 import { OTPVerification } from './OTPVerification';
+import { RecaptchaWidget, useRecaptchaRequired } from './RecaptchaWidget';
 
 export function LoginSignup() {
   const [isLogin, setIsLogin] = useState(true);
@@ -18,7 +19,9 @@ export function LoginSignup() {
   const [showOTP, setShowOTP] = useState(false);
   const [signupData, setSignupData] = useState(null);
   const [loginOTPData, setLoginOTPData] = useState(null); // For OTP from login flow
-  
+  const recaptchaRef = useRef(null);
+  const recaptchaRequired = useRecaptchaRequired();
+
   const { login, signup } = useAuth();
   const { language, toggleLanguage } = useLanguage();
   const navigate = useNavigate();
@@ -26,10 +29,15 @@ export function LoginSignup() {
   const handleLogin = async (e) => {
     e.preventDefault();
     setError('');
+    const recaptchaToken = recaptchaRef.current?.getValue?.() || '';
+    if (recaptchaRequired && !recaptchaToken) {
+      setError(language === 'si' ? 'කරුණාකරල්ලෙන් captcha සම්පූර්ණ කරන්න' : 'Please complete the captcha');
+      return;
+    }
     setLoading(true);
 
     try {
-      const result = await login(email, password);
+      const result = await login(email, password, recaptchaToken);
       if (result.success) {
         // Redirect to admin dashboard if user is admin, otherwise to student dashboard
         if (result.user?.role === 'admin') {
@@ -63,17 +71,22 @@ export function LoginSignup() {
       }
     } catch (err) {
       setError(err.message || 'An error occurred');
+      recaptchaRef.current?.reset?.();
     } finally {
       setLoading(false);
     }
   };
 
-  const handleSignup = async (formData) => {
+  const handleSignup = async (formData, recaptchaToken) => {
     setError('');
+    if (recaptchaRequired && !recaptchaToken) {
+      setError(language === 'si' ? 'කරුණාකරල්ලෙන් captcha සම්පූර්ණ කරන්න' : 'Please complete the captcha');
+      return;
+    }
     setLoading(true);
 
     try {
-      const result = await signup(formData);
+      const result = await signup(formData, recaptchaToken);
       if (result.success) {
         // Show OTP verification
         setSignupData(formData);
@@ -84,6 +97,7 @@ export function LoginSignup() {
       }
     } catch (err) {
       setError(err.message || 'An error occurred');
+      recaptchaRef.current?.reset?.();
     } finally {
       setLoading(false);
     }
@@ -200,6 +214,8 @@ export function LoginSignup() {
                   />
                 </div>
 
+                <RecaptchaWidget ref={recaptchaRef} />
+
                 {error && (
                   <div className="p-3 bg-red-50 border border-red-200 rounded-lg text-red-700 text-sm font-medium">
                     {error}
@@ -223,11 +239,15 @@ export function LoginSignup() {
                 </Button>
               </form>
             ) : (
-              <MultiStepSignup
-                onSubmit={handleSignup}
-                loading={loading}
-                error={error}
-              />
+              <>
+                <MultiStepSignup
+                  onSubmit={handleSignup}
+                  getRecaptchaToken={() => recaptchaRef.current?.getValue?.() || ''}
+                  loading={loading}
+                  error={error}
+                />
+                <RecaptchaWidget ref={recaptchaRef} />
+              </>
             )}
           </div>
 
