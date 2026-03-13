@@ -7,7 +7,7 @@ import { Settings as SettingsIcon, Mail, CheckCircle, XCircle, Loader, MessageCi
 
 export function Settings() {
   const [settings, setSettings] = useState({
-    globalDailyLimit: 10,
+    globalDailyLimit: 15,
     smtp: {
       host: '',
       port: '587',
@@ -64,7 +64,7 @@ export function Settings() {
       const adminSecret = getAdminSecret();
       const data = await settingsAPI.get(adminSecret);
       setSettings({
-        globalDailyLimit: data.globalDailyLimit || 10,
+        globalDailyLimit: data.globalDailyLimit || 15,
         smtp: data.smtp || {
           host: '',
           port: '587',
@@ -231,7 +231,7 @@ export function Settings() {
                 onChange={(e) =>
                   setSettings((prev) => ({
                     ...prev,
-                    globalDailyLimit: parseInt(e.target.value) || 10,
+                    globalDailyLimit: parseInt(e.target.value) || 15,
                   }))
                 }
                 className="rounded-lg border-gray-300 focus:border-[#667eea] focus:ring-2 focus:ring-[#667eea]/30 focus:ring-offset-0 h-11"

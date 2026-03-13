@@ -69,6 +69,11 @@ export const userAPI = {
 
   getUserStats: (userId) => apiRequest(`/users/${userId}/stats`),
 
+  updateGeneralKnowledgeProgress: (userId, index) => apiRequest(`/users/${userId}/general-knowledge-progress`, {
+    method: 'PUT',
+    body: JSON.stringify({ index }),
+  }),
+
   getProgress: (userId) => apiRequest(`/users/${userId}/progress`),
 
   getCompletions: (userId) => apiRequest(`/users/${userId}/completions`),
@@ -137,6 +142,8 @@ export const userAPI = {
 // MCQ API
 export const mcqAPI = {
   getRandom: (userId) => apiRequest(`/mcqs/random?userId=${userId}`),
+
+  getGeneralKnowledgeNotes: () => apiRequest('/mcqs/notes/general-knowledge'),
 
   submitAnswer: (userId, mcqId, selectedAnswer) => apiRequest('/mcqs/submit', {
     method: 'POST',

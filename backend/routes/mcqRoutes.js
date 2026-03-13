@@ -4,6 +4,7 @@ import {
   submitMcqAnswer,
   getAllMcqs,
   getMcqById,
+  getGeneralKnowledgeNotes,
   createMcq,
   updateMcq,
   deleteMcq,
@@ -17,6 +18,7 @@ const router = express.Router();
 // Student routes
 router.get('/random', getRandomMcq);
 router.post('/submit', submitMcqAnswer);
+router.get('/notes/general-knowledge', getGeneralKnowledgeNotes);
 router.get('/', getAllMcqs);
 router.get('/:id', getMcqById);
 

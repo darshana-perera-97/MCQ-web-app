@@ -21,6 +21,7 @@ import { Materials as StudentMaterials } from './components/student/Materials';
 import { Summarize } from './components/student/Summarize';
 import { Essays } from './components/student/Essays';
 import { StructuredQuestions } from './components/student/StructuredQuestions';
+import { GeneralKnowledgeNotes } from './components/student/GeneralKnowledgeNotes';
 
 function App() {
   return (
@@ -39,6 +40,7 @@ function App() {
           <Route path="/student/essays" element={<Essays />} />
           <Route path="/student/summarize" element={<Summarize />} />
           <Route path="/student/structured-questions" element={<StructuredQuestions />} />
+          <Route path="/student/general-knowledge-notes" element={<GeneralKnowledgeNotes />} />
           <Route path="/quiz" element={<QuizInterface />} />
           <Route path="/admin" element={<AdminLayout />}>
             <Route index element={<AdminDashboard />} />

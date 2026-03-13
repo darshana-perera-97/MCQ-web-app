@@ -22,7 +22,7 @@ export const updateSettings = async (req, res) => {
       if (typeof globalDailyLimit !== 'number' || globalDailyLimit < 1) {
         return res.status(400).json({ error: 'globalDailyLimit must be a positive number' });
       }
-      await settingsModel.updateDailyLimit(globalDailyLimit);
+      settings.globalDailyLimit = globalDailyLimit;
     }
 
     if (smtp !== undefined) {

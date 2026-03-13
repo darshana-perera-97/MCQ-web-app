@@ -20,7 +20,7 @@ export class SettingsModel {
     } catch (error) {
       if (error.code === 'ENOENT') {
         // Return default settings
-        return { globalDailyLimit: 10 };
+        return { globalDailyLimit: 15 };
       }
       throw error;
     }
@@ -51,7 +51,7 @@ export class SettingsModel {
    */
   async getDailyLimit() {
     const settings = await this.read();
-    return settings.globalDailyLimit || 10;
+    return settings.globalDailyLimit || 15;
   }
 
   /**

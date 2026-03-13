@@ -107,6 +107,18 @@ export const submitMcqAnswer = async (req, res) => {
   }
 };
 
+const GENERAL_KNOWLEDGE_CATEGORY = 'සාමාන්‍ය දැනුම';
+
+export const getGeneralKnowledgeNotes = async (req, res) => {
+  try {
+    const mcqs = await mcqModel.findAll({ category: GENERAL_KNOWLEDGE_CATEGORY });
+    res.json({ mcqs, count: mcqs.length });
+  } catch (error) {
+    console.error('Get general knowledge notes error:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+};
+
 export const getAllMcqs = async (req, res) => {
   try {
     const { category } = req.query;

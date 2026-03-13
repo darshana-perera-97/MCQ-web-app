@@ -5,7 +5,7 @@ import { useAuth } from '../../context/AuthContext';
 import { useLanguage } from '../../context/LanguageContext';
 import { userAPI, mcqAPI, essayAPI, summaryAPI, notificationAPI, structuredQuestionAPI, structuredWritingAPI } from '../../services/api';
 import { Button } from '../ui/button';
-import { BookOpen, TrendingUp, Award, LogOut, FileText, Bell, PenTool, FileCheck, Languages, ChevronLeft, ChevronRight } from 'lucide-react';
+import { BookOpen, TrendingUp, Award, LogOut, FileText, Bell, PenTool, FileCheck, Languages, ChevronLeft, ChevronRight, Lightbulb } from 'lucide-react';
 import { NotificationsDrawer } from './NotificationsDrawer';
 
 export function Dashboard() {
@@ -220,7 +220,7 @@ export function Dashboard() {
   }
 
   const dailyCompleted = userStats.dailyCount || 0;
-  const dailyLimit = userStats.dailyLimit || 10;
+  const dailyLimit = userStats.dailyLimit || 15;
   const remainingToday = userStats.remainingToday || 0;
   const canTakeQuiz = dailyCompleted < dailyLimit && remainingToday > 0;
 
@@ -425,6 +425,34 @@ export function Dashboard() {
                 className="w-full bg-gray-900 hover:bg-gray-800 text-white rounded-lg h-12 font-medium transition-all disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 {canTakeQuiz ? (language === 'si' ? 'MCQ විභාගය ආරම්භ කරන්න' : 'Start MCQ Quiz') : (language === 'si' ? 'සම්පූර්ණ' : 'Completed')}
+              </Button>
+            </div>
+          </div>
+          );
+          })()}
+
+          {/* General Knowledge Notes Card */}
+          {(() => {
+            const color = getCardColor(7);
+            return (
+          <div className={`${color.bg} rounded-2xl shadow-sm border ${color.border} p-8`}>
+            <div className="flex flex-col h-full">
+              <div className="flex items-center gap-3 mb-5">
+                <div className={`p-3 ${color.iconBg} rounded-xl border ${color.iconBorder}`}>
+                  <Lightbulb className={`w-6 h-6 ${color.iconText}`} />
+                </div>
+                <h3 className="text-lg font-bold text-gray-900">{language === 'si' ? 'සාමාන්‍ය දැනුම' : 'General Knowledge'}</h3>
+              </div>
+              <p className="text-gray-600 mb-6 flex-1 font-normal">
+                {language === 'si' 
+                  ? 'සාමාන්‍ය දැනුම ප්‍රශ්න සහ නිවැරදි උත්තර බලන්න. ඔබ නැවත එන විට ඉදිරියෙන් ඉගෙන ගන්න.'
+                  : 'View general knowledge questions and correct answers. Continue from where you left off.'}
+              </p>
+              <Button 
+                onClick={() => navigate('/student/general-knowledge-notes')}
+                className="w-full bg-gray-900 hover:bg-gray-800 text-white rounded-lg h-12 font-medium transition-all"
+              >
+                {language === 'si' ? 'සාමාන්‍ය දැනුම සටහන්' : 'General Knowledge Notes'}
               </Button>
             </div>
           </div>

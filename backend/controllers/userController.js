@@ -486,10 +486,30 @@ export const getUserStats = async (req, res) => {
     res.json({
       ...userResponse,
       dailyLimit,
-      remainingToday: remaining
+      remainingToday: remaining,
+      generalKnowledgeLastIndex: user.generalKnowledgeLastIndex ?? 0
     });
   } catch (error) {
     console.error('Get user stats error:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+};
+
+export const updateGeneralKnowledgeProgress = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { index } = req.body;
+    if (typeof index !== 'number' || index < 0) {
+      return res.status(400).json({ error: 'index must be a non-negative number' });
+    }
+    const user = await userModel.findById(id);
+    if (!user) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+    await userModel.update(id, { generalKnowledgeLastIndex: index });
+    res.json({ generalKnowledgeLastIndex: index });
+  } catch (error) {
+    console.error('Update general knowledge progress error:', error);
     res.status(500).json({ error: 'Internal server error' });
   }
 };

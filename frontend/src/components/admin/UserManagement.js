@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { userAPI, getAdminSecret } from '../../services/api';
 import { Button } from '../ui/button';
 import { Input } from '../ui/input';
-import { Pencil, Trash2, Search, UserPlus, Check, X, ChevronDown, ChevronUp, Phone, GraduationCap, Mail } from 'lucide-react';
+import { Pencil, Trash2, Search, UserPlus, Check, X, ChevronDown, ChevronUp, Phone, GraduationCap, Mail, Loader } from 'lucide-react';
 import {
   Dialog,
   DialogContent,
@@ -22,6 +22,7 @@ export function UserManagement() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [approveTargetUser, setApproveTargetUser] = useState(null);
+  const [approveLoading, setApproveLoading] = useState(false);
 
   useEffect(() => {
     // Ensure admin secret is set (default to 'admin123' for development)
@@ -70,6 +71,7 @@ export function UserManagement() {
   const rejectedUsers = users.filter(u => (u.role === 'student' || !u.role) && u.status === 'rejected');
 
   const handleApprove = async (userId, trialDays = 0) => {
+    setApproveLoading(true);
     try {
       const adminSecret = getAdminSecret();
       await userAPI.approveUser(userId, adminSecret, { trialDays });
@@ -78,6 +80,8 @@ export function UserManagement() {
       alert(trialDays === 1 ? 'User approved for 1-day trial!' : 'User approved permanently!');
     } catch (err) {
       alert(err.message || 'Failed to approve user');
+    } finally {
+      setApproveLoading(false);
     }
   };
 
@@ -375,11 +379,11 @@ export function UserManagement() {
                           <div className="flex-1 h-2 bg-gray-100 rounded-full overflow-hidden max-w-[120px]">
                             <div
                               className="h-full bg-gradient-to-r from-[#667eea] to-[#764ba2] rounded-full transition-all"
-                              style={{ width: `${((user.dailyCount || 0) / (user.dailyLimit || 10)) * 100}%` }}
+                              style={{ width: `${((user.dailyCount || 0) / (user.dailyLimit || 15)) * 100}%` }}
                             />
                           </div>
                           <span className="text-sm text-gray-600">
-                            {user.dailyCount || 0}/{user.dailyLimit || 10}
+                            {user.dailyCount || 0}/{user.dailyLimit || 15}
                           </span>
                         </div>
                       </td>
@@ -596,11 +600,11 @@ export function UserManagement() {
                   <div className="flex-1 h-2 bg-gray-100 rounded-full overflow-hidden">
                     <div
                       className="h-full bg-gradient-to-r from-[#667eea] to-[#764ba2] rounded-full"
-                      style={{ width: `${((user.dailyCount || 0) / (user.dailyLimit || 10)) * 100}%` }}
+                      style={{ width: `${((user.dailyCount || 0) / (user.dailyLimit || 15)) * 100}%` }}
                     />
                   </div>
                   <span className="text-sm text-gray-600">
-                    {user.dailyCount || 0}/{user.dailyLimit || 10}
+                    {user.dailyCount || 0}/{user.dailyLimit || 15}
                   </span>
                 </div>
                 
@@ -737,7 +741,7 @@ export function UserManagement() {
       </div>
 
       {/* Approve options dialog */}
-      <Dialog open={!!approveTargetUser} onOpenChange={(open) => !open && setApproveTargetUser(null)}>
+      <Dialog open={!!approveTargetUser} onOpenChange={(open) => { if (!open && !approveLoading) { setApproveTargetUser(null); setApproveLoading(false); } }}>
         <DialogContent className="sm:max-w-[400px] rounded-2xl bg-white">
           <DialogHeader>
             <DialogTitle>Approve user</DialogTitle>
@@ -746,22 +750,31 @@ export function UserManagement() {
             </DialogDescription>
           </DialogHeader>
           <div className="flex flex-col gap-3 py-2">
+            {approveLoading && (
+              <div className="flex items-center justify-center gap-2 py-2 text-green-700">
+                <Loader className="w-5 h-5 animate-spin" />
+                <span className="text-sm font-medium">Approving...</span>
+              </div>
+            )}
             <Button
+              disabled={approveLoading}
               onClick={() => approveTargetUser && handleApprove(approveTargetUser.id, 0)}
-              className="w-full rounded-xl bg-gradient-to-r from-green-600 to-green-700 hover:opacity-90 text-white"
+              className="w-full rounded-xl bg-gradient-to-r from-green-600 to-green-700 hover:opacity-90 text-white disabled:opacity-70"
             >
               Approve permanently
             </Button>
             <Button
+              disabled={approveLoading}
               variant="outline"
               onClick={() => approveTargetUser && handleApprove(approveTargetUser.id, 1)}
-              className="w-full rounded-xl border-green-300 text-green-700 hover:bg-green-50"
+              className="w-full rounded-xl border-green-300 text-green-700 hover:bg-green-50 disabled:opacity-70"
             >
               Approve for 1 day trial
             </Button>
             <Button
               variant="ghost"
-              onClick={() => setApproveTargetUser(null)}
+              disabled={approveLoading}
+              onClick={() => { setApproveTargetUser(null); setApproveLoading(false); }}
               className="w-full rounded-xl"
             >
               Cancel
@@ -821,9 +834,9 @@ export function UserManagement() {
                 <Input
                   id="dailyLimit"
                   type="number"
-                  value={editingUser.dailyLimit || 10}
+                  value={editingUser.dailyLimit || 15}
                   onChange={(e) =>
-                    setEditingUser({ ...editingUser, dailyLimit: parseInt(e.target.value) || 10 })
+                    setEditingUser({ ...editingUser, dailyLimit: parseInt(e.target.value) || 15 })
                   }
                   className="rounded-xl"
                 />

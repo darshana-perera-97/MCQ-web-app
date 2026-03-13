@@ -16,7 +16,8 @@ import {
   unsuspendUser,
   verifyOTP,
   resendOTP,
-  updateNotificationPreferences
+  updateNotificationPreferences,
+  updateGeneralKnowledgeProgress
 } from '../controllers/userController.js';
 import { adminAuth } from '../middleware/adminAuth.js';
 
@@ -28,6 +29,7 @@ router.post('/login', login);
 router.post('/verify-otp', verifyOTP);
 router.post('/resend-otp', resendOTP);
 router.get('/:id/stats', getUserStats);
+router.put('/:id/general-knowledge-progress', updateGeneralKnowledgeProgress);
 router.get('/:id/progress', getProgress);
 router.get('/:id/completions', getCompletions);
 router.post('/:id/complete', toggleComplete);

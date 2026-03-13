@@ -12,7 +12,7 @@ const files = {
   'mcqs.json': [],
   'essays.json': [],
   'notifications.json': [],
-  'settings.json': { globalDailyLimit: 10 }
+  'settings.json': { globalDailyLimit: 15 }
 };
 
 async function seed() {
