@@ -361,7 +361,7 @@ export function QuizInterface() {
 
       {/* Daily limit reached – show correct answers count */}
       <Dialog open={showLimitReachedPopup} onOpenChange={(open) => !open && handleCloseLimitReachedPopup()}>
-        <DialogContent className="sm:max-w-md rounded-2xl">
+        <DialogContent className="sm:max-w-md rounded-2xl bg-white">
           <DialogHeader>
             <DialogTitle>Daily limit reached</DialogTitle>
             <DialogDescription>
