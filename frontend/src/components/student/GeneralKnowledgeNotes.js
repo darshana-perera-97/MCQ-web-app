@@ -4,16 +4,36 @@ import { useAuth } from '../../context/AuthContext';
 import { useLanguage } from '../../context/LanguageContext';
 import { mcqAPI, userAPI } from '../../services/api';
 import { Button } from '../ui/button';
-import { ArrowLeft, ChevronLeft, ChevronRight, BookOpen } from 'lucide-react';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+} from '../ui/dialog';
+import { RecaptchaWidget, useRecaptchaRequired } from '../RecaptchaWidget';
+import { ArrowLeft, ChevronLeft, ChevronRight, Check, X } from 'lucide-react';
+
+const EVERY_N_QUESTIONS = 10;
+const QUIZ_QUESTION_OFFSET = 5; // 5th from last viewed
 
 export function GeneralKnowledgeNotes() {
   const navigate = useNavigate();
   const { user } = useAuth();
   const { language } = useLanguage();
+  const recaptchaRef = useRef(null);
+  const recaptchaRequired = useRecaptchaRequired();
   const [mcqs, setMcqs] = useState([]);
   const [currentIndex, setCurrentIndex] = useState(0);
   const [loading, setLoading] = useState(true);
   const initialLoadDone = useRef(false);
+  const shownMilestonesRef = useRef(new Set());
+
+  const [showRecaptchaModal, setShowRecaptchaModal] = useState(false);
+  const [showKnowledgeCheckModal, setShowKnowledgeCheckModal] = useState(false);
+  const [quizMcq, setQuizMcq] = useState(null);
+  const [selectedQuizAnswer, setSelectedQuizAnswer] = useState(null);
+  const [quizResult, setQuizResult] = useState(null);
 
   useEffect(() => {
     if (!user) {
@@ -57,6 +77,44 @@ export function GeneralKnowledgeNotes() {
     })();
     return () => { cancelled = true; };
   }, [currentIndex, user?.id, mcqs.length]);
+
+  // After every 10 questions, show reCAPTCHA then "Shall we try your knowledge?" with MCQ 5th from last
+  useEffect(() => {
+    if (mcqs.length === 0 || !initialLoadDone.current) return;
+    const questionNumber = currentIndex + 1;
+    if (questionNumber % EVERY_N_QUESTIONS !== 0) return;
+    if (shownMilestonesRef.current.has(questionNumber)) return;
+    shownMilestonesRef.current.add(questionNumber);
+    setShowRecaptchaModal(true);
+  }, [currentIndex, mcqs.length]);
+
+  const handleRecaptchaContinue = () => {
+    const token = recaptchaRef.current?.getValue?.() || '';
+    if (recaptchaRequired && !token) {
+      alert(language === 'si' ? 'කරුණාකර reCAPTCHA සම්පූර්ණ කරන්න.' : 'Please complete the reCAPTCHA.');
+      return;
+    }
+    recaptchaRef.current?.reset?.();
+    setShowRecaptchaModal(false);
+    const quizIndex = Math.max(0, currentIndex - QUIZ_QUESTION_OFFSET);
+    setQuizMcq(mcqs[quizIndex] || null);
+    setSelectedQuizAnswer(null);
+    setQuizResult(null);
+    setShowKnowledgeCheckModal(true);
+  };
+
+  const handleQuizSubmit = () => {
+    if (!selectedQuizAnswer || !quizMcq) return;
+    const correct = selectedQuizAnswer === quizMcq.answer;
+    setQuizResult(correct ? 'correct' : 'incorrect');
+  };
+
+  const handleCloseKnowledgeCheck = () => {
+    setShowKnowledgeCheckModal(false);
+    setQuizMcq(null);
+    setSelectedQuizAnswer(null);
+    setQuizResult(null);
+  };
 
   const handlePrev = () => {
     setCurrentIndex((i) => Math.max(0, i - 1));
@@ -106,34 +164,11 @@ export function GeneralKnowledgeNotes() {
         ) : (
           <div className="bg-white rounded-2xl shadow-sm border border-gray-200 overflow-hidden">
             <div className="p-6 sm:p-8">
-              <div className="flex items-center gap-2 text-sm text-gray-500 mb-4">
-                <BookOpen className="w-4 h-4" />
-                <span>
-                  {currentIndex + 1} / {mcqs.length}
-                </span>
-              </div>
               <h2 className="text-lg font-semibold text-gray-900 mb-4 leading-relaxed">
                 {current?.question}
               </h2>
-              <div className="space-y-2">
-                {['A', 'B', 'C', 'D'].map((key) => (
-                  <div
-                    key={key}
-                    className={`rounded-xl border p-3 ${
-                      current?.answer === key
-                        ? 'border-green-500 bg-green-50 text-green-900'
-                        : 'border-gray-200 bg-gray-50 text-gray-600'
-                    }`}
-                  >
-                    <span className="font-medium">{key}.</span>{' '}
-                    {current?.[`option${key}`]}
-                    {current?.answer === key && (
-                      <span className="ml-2 text-sm font-semibold text-green-700">
-                        ({language === 'si' ? 'නිවැරදි' : 'Correct'})
-                      </span>
-                    )}
-                  </div>
-                ))}
+              <div className="rounded-xl border border-green-500 bg-green-50 p-4 text-green-900">
+                {current && current[`option${current.answer}`]}
               </div>
             </div>
             <div className="flex items-center justify-between gap-4 px-6 sm:px-8 py-4 bg-gray-50 border-t border-gray-200">
@@ -146,9 +181,6 @@ export function GeneralKnowledgeNotes() {
                 <ChevronLeft className="w-4 h-4 mr-1" />
                 {language === 'si' ? 'කලින්' : 'Previous'}
               </Button>
-              <span className="text-sm text-gray-500">
-                {currentIndex + 1} / {mcqs.length}
-              </span>
               <Button
                 variant="outline"
                 onClick={handleNext}
@@ -161,6 +193,95 @@ export function GeneralKnowledgeNotes() {
             </div>
           </div>
         )}
+
+        {/* reCAPTCHA modal – after every 10 questions */}
+        <Dialog open={showRecaptchaModal} onOpenChange={setShowRecaptchaModal}>
+          <DialogContent className="sm:max-w-md rounded-2xl">
+            <DialogHeader>
+              <DialogTitle>
+                {language === 'si' ? 'සත්‍යාපනය' : 'Verify'}
+              </DialogTitle>
+              <DialogDescription>
+                {language === 'si'
+                  ? 'කරුණාකර ඔබ මිනිසෙක් බව සත්‍යාපනය කරන්න.'
+                  : "Please verify you're human to continue."}
+              </DialogDescription>
+            </DialogHeader>
+            <RecaptchaWidget ref={recaptchaRef} />
+            <div className="flex justify-end gap-2">
+              <Button variant="outline" onClick={() => setShowRecaptchaModal(false)}>
+                {language === 'si' ? 'අවලංගු කරන්න' : 'Cancel'}
+              </Button>
+              <Button onClick={handleRecaptchaContinue}>
+                {language === 'si' ? 'ඉදිරියට' : 'Continue'}
+              </Button>
+            </div>
+          </DialogContent>
+        </Dialog>
+
+        {/* Knowledge check popup – "Shall we try your knowledge?" with MCQ 5th from last */}
+        <Dialog open={showKnowledgeCheckModal} onOpenChange={(open) => !open && handleCloseKnowledgeCheck()}>
+          <DialogContent className="sm:max-w-lg rounded-2xl max-h-[90vh] overflow-y-auto">
+            <DialogHeader>
+              <DialogTitle>
+                {language === 'si' ? 'ඔබේ දැනුම පරීක්ෂා කරමුද?' : 'Shall we try your knowledge?'}
+              </DialogTitle>
+              {quizMcq && !quizResult && (
+                <DialogDescription>
+                  {language === 'si' ? 'පහත ප්‍රශ්නයට උත්තරය තෝරන්න.' : 'Choose the answer for the question below.'}
+                </DialogDescription>
+              )}
+            </DialogHeader>
+            {quizMcq && (
+              <div className="space-y-4 py-2">
+                <p className="font-medium text-gray-900 leading-relaxed">{quizMcq.question}</p>
+                {!quizResult ? (
+                  <div className="grid gap-2">
+                    {['A', 'B', 'C', 'D'].map((key) => (
+                      <button
+                        key={key}
+                        type="button"
+                        onClick={() => setSelectedQuizAnswer(key)}
+                        className={`rounded-xl border p-3 text-left transition-colors ${
+                          selectedQuizAnswer === key
+                            ? 'border-[#667eea] bg-indigo-50 text-gray-900'
+                            : 'border-gray-200 hover:bg-gray-50 text-gray-700'
+                        }`}
+                      >
+                        <span className="font-medium">{key}.</span> {quizMcq[`option${key}`]}
+                      </button>
+                    ))}
+                  </div>
+                ) : (
+                  <div className={`rounded-xl border p-4 ${quizResult === 'correct' ? 'border-green-500 bg-green-50 text-green-900' : 'border-red-500 bg-red-50 text-red-900'}`}>
+                    {quizResult === 'correct' ? (
+                      <span className="flex items-center gap-2 font-medium">
+                        <Check className="w-5 h-5" />
+                        {language === 'si' ? 'නිවැරදියි!' : 'Correct!'}
+                      </span>
+                    ) : (
+                      <span className="flex items-center gap-2 font-medium">
+                        <X className="w-5 h-5" />
+                        {language === 'si' ? 'වැරදියි. නිවැරදි උත්තරය:' : 'Incorrect. Correct answer:'} {quizMcq[`option${quizMcq.answer}`]}
+                      </span>
+                    )}
+                  </div>
+                )}
+                <div className="flex justify-end gap-2 pt-2">
+                  {!quizResult ? (
+                    <Button onClick={handleQuizSubmit} disabled={!selectedQuizAnswer}>
+                      {language === 'si' ? 'ඉදිරිපත් කරන්න' : 'Submit'}
+                    </Button>
+                  ) : (
+                    <Button onClick={handleCloseKnowledgeCheck}>
+                      {language === 'si' ? 'වසන්න' : 'Close'}
+                    </Button>
+                  )}
+                </div>
+              </div>
+            )}
+          </DialogContent>
+        </Dialog>
       </div>
     </div>
   );

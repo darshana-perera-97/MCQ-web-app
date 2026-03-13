@@ -4,6 +4,13 @@ import { useAuth } from '../../context/AuthContext';
 import { mcqAPI, userAPI } from '../../services/api';
 import { BACKEND_URL } from '../../config/api';
 import { Button } from '../ui/button';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+} from '../ui/dialog';
 import { ArrowLeft, Check, X } from 'lucide-react';
 import { motion } from 'framer-motion';
 
@@ -16,8 +23,10 @@ export function QuizInterface() {
   const [isCorrect, setIsCorrect] = useState(false);
   const [correctAnswer, setCorrectAnswer] = useState(null);
   const [questionsCompleted, setQuestionsCompleted] = useState(0);
+  const [correctCount, setCorrectCount] = useState(0);
   const [loading, setLoading] = useState(true);
   const [userStats, setUserStats] = useState(null);
+  const [showLimitReachedPopup, setShowLimitReachedPopup] = useState(false);
 
   useEffect(() => {
     if (!user) {
@@ -40,11 +49,9 @@ export function QuizInterface() {
   const loadNewQuestion = async () => {
     try {
       setLoading(true);
-      // Load only MCQ questions (not essay questions)
       const question = await mcqAPI.getRandom(user.id);
       if (!question) {
-        // No more MCQ questions available
-        navigate('/student/dashboard');
+        setShowLimitReachedPopup(true);
         return;
       }
       setCurrentQuestion(question);
@@ -54,7 +61,7 @@ export function QuizInterface() {
     } catch (error) {
       console.error('Error loading question:', error);
       if (error.message.includes('Daily limit reached')) {
-        navigate('/student/dashboard');
+        setShowLimitReachedPopup(true);
       }
     } finally {
       setLoading(false);
@@ -75,6 +82,7 @@ export function QuizInterface() {
       setCorrectAnswer(response.correctAnswer);
       setShowResult(true);
       setQuestionsCompleted(prev => prev + 1);
+      if (response.correct) setCorrectCount(prev => prev + 1);
       
       // Update user stats
       await loadUserStats();
@@ -91,13 +99,18 @@ export function QuizInterface() {
   };
 
   const handleNext = async () => {
-    // Reload user stats to check daily limit
-    await loadUserStats();
-    if (userStats && userStats.dailyCount >= userStats.dailyLimit) {
-      navigate('/student/dashboard');
+    const stats = await userAPI.getUserStats(user.id);
+    setUserStats(stats);
+    if (stats.dailyCount >= stats.dailyLimit) {
+      setShowLimitReachedPopup(true);
       return;
     }
     loadNewQuestion();
+  };
+
+  const handleCloseLimitReachedPopup = () => {
+    setShowLimitReachedPopup(false);
+    navigate('/student/dashboard');
   };
 
   if (loading || !currentQuestion) {
@@ -345,6 +358,21 @@ export function QuizInterface() {
           </motion.div>
         )}
       </div>
+
+      {/* Daily limit reached – show correct answers count */}
+      <Dialog open={showLimitReachedPopup} onOpenChange={(open) => !open && handleCloseLimitReachedPopup()}>
+        <DialogContent className="sm:max-w-md rounded-2xl">
+          <DialogHeader>
+            <DialogTitle>Daily limit reached</DialogTitle>
+            <DialogDescription>
+              Number of correct answers given by you: <strong className="text-gray-900">{correctCount}</strong>
+            </DialogDescription>
+          </DialogHeader>
+          <div className="flex justify-end pt-2">
+            <Button onClick={handleCloseLimitReachedPopup}>OK</Button>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
