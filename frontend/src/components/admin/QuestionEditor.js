@@ -6,7 +6,7 @@ import { Input } from '../ui/input';
 import { Label } from '../ui/label';
 import { Textarea } from '../ui/textarea';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '../ui/tabs';
-import { Plus, Trash2, Search, Image as ImageIcon, X, Upload, FileText, Eye, ArrowLeft, CheckSquare, Square } from 'lucide-react';
+import { Plus, Trash2, Search, Image as ImageIcon, X, Upload, FileText, Eye, ArrowLeft, CheckSquare, Square, Pencil, Loader } from 'lucide-react';
 import {
   Dialog,
   DialogContent,
@@ -36,6 +36,9 @@ export function QuestionEditor() {
   const [selectedQuestion, setSelectedQuestion] = useState(null);
   const [selectedQuestionType, setSelectedQuestionType] = useState(null); // 'mcq', 'essay', or 'summary'
   const [selectedItems, setSelectedItems] = useState([]); // Array of { id, type } objects
+  const [mcqEditMode, setMcqEditMode] = useState(false);
+  const [mcqEditForm, setMcqEditForm] = useState({ question: '', optionA: '', optionB: '', optionC: '', optionD: '', answer: 'A' });
+  const [mcqSaving, setMcqSaving] = useState(false);
 
   // Generate auto ID for MCQ
   const generateAutoId = () => {
@@ -237,6 +240,12 @@ export function QuestionEditor() {
       (s.category && s.category.toLowerCase().includes(searchQuery.toLowerCase()))
   );
 
+  const filteredSummaries = summaries.filter(
+    (s) =>
+      s.title?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      s.id?.toLowerCase().includes(searchQuery.toLowerCase())
+  );
+
   // Get combined filtered results based on question type filter
   const getDisplayItems = () => {
     if (questionTypeFilter === 'mcq') {
@@ -244,27 +253,22 @@ export function QuestionEditor() {
     } else if (questionTypeFilter === 'essay') {
       return { items: filteredEssays, type: 'essay' };
     } else if (questionTypeFilter === 'summary') {
-      const filteredSummaries = summaries.filter(
-        (s) =>
-          s.title?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-          s.id?.toLowerCase().includes(searchQuery.toLowerCase())
-      );
       return { items: filteredSummaries, type: 'summary' };
     } else if (questionTypeFilter === 'structured') {
       return { items: filteredStructuredQuestions, type: 'structured' };
     } else if (questionTypeFilter === 'structuredWriting') {
       return { items: filteredStructuredWritings, type: 'structuredWriting' };
     } else {
-      // Combine all types
-      return { 
+      // Combine all types (all filtered by search)
+      return {
         items: [
           ...filteredQuestions.map(q => ({ ...q, _type: 'mcq' })),
           ...filteredEssays.map(e => ({ ...e, _type: 'essay' })),
-          ...summaries.map(s => ({ ...s, _type: 'summary' })),
+          ...filteredSummaries.map(s => ({ ...s, _type: 'summary' })),
           ...filteredStructuredQuestions.map(s => ({ ...s, _type: 'structured' })),
           ...filteredStructuredWritings.map(s => ({ ...s, _type: 'structuredWriting' }))
-        ], 
-        type: 'all' 
+        ],
+        type: 'all'
       };
     }
   };
@@ -654,6 +658,69 @@ export function QuestionEditor() {
   const handleCloseQuestionView = () => {
     setSelectedQuestion(null);
     setSelectedQuestionType(null);
+    setMcqEditMode(false);
+    setMcqEditForm({ question: '', optionA: '', optionB: '', optionC: '', optionD: '', answer: 'A' });
+  };
+
+  const handleStartEditMcq = () => {
+    if (!selectedQuestion || selectedQuestionType !== 'mcq') return;
+    setMcqEditForm({
+      question: selectedQuestion.question || '',
+      optionA: selectedQuestion.optionA || '',
+      optionB: selectedQuestion.optionB || '',
+      optionC: selectedQuestion.optionC || '',
+      optionD: selectedQuestion.optionD || '',
+      answer: selectedQuestion.answer || 'A',
+    });
+    setMcqEditMode(true);
+  };
+
+  const handleCancelEditMcq = () => {
+    setMcqEditMode(false);
+  };
+
+  const handleSaveMcq = async () => {
+    if (!selectedQuestion || selectedQuestionType !== 'mcq') return;
+    if (!mcqEditForm.question?.trim()) {
+      alert('Question text is required');
+      return;
+    }
+    if (!mcqEditForm.optionA?.trim() || !mcqEditForm.optionB?.trim() || !mcqEditForm.optionC?.trim() || !mcqEditForm.optionD?.trim()) {
+      alert('All four options (A, B, C, D) are required');
+      return;
+    }
+    if (!['A', 'B', 'C', 'D'].includes(mcqEditForm.answer)) {
+      alert('Correct answer must be A, B, C, or D');
+      return;
+    }
+    setMcqSaving(true);
+    try {
+      const adminSecret = getAdminSecret();
+      await mcqAPI.update(selectedQuestion.id, {
+        question: mcqEditForm.question.trim(),
+        optionA: mcqEditForm.optionA.trim(),
+        optionB: mcqEditForm.optionB.trim(),
+        optionC: mcqEditForm.optionC.trim(),
+        optionD: mcqEditForm.optionD.trim(),
+        answer: mcqEditForm.answer,
+        category: selectedQuestion.category || undefined,
+      }, adminSecret);
+      await loadQuestions();
+      setSelectedQuestion({
+        ...selectedQuestion,
+        question: mcqEditForm.question.trim(),
+        optionA: mcqEditForm.optionA.trim(),
+        optionB: mcqEditForm.optionB.trim(),
+        optionC: mcqEditForm.optionC.trim(),
+        optionD: mcqEditForm.optionD.trim(),
+        answer: mcqEditForm.answer,
+      });
+      setMcqEditMode(false);
+    } catch (err) {
+      alert(err.message || 'Failed to update MCQ');
+    } finally {
+      setMcqSaving(false);
+    }
   };
 
   const handleDeleteQuestion = async (id, type = 'mcq') => {
@@ -2229,9 +2296,9 @@ export function QuestionEditor() {
                     const isStructuredWriting = item._type === 'structuredWriting' || displayItems.type === 'structuredWriting';
                     const itemType = isSummary ? 'summary' : isEssay ? 'essay' : isStructured ? 'structured' : isStructuredWriting ? 'structuredWriting' : 'mcq';
                     const isSelected = isItemSelected(item.id, itemType);
-                    
+                    const itemKey = `${itemType}-${item.id}`;
                     return (
-                      <div key={item.id} className={`p-6 hover:bg-gray-50 transition-colors ${isSelected ? 'bg-blue-50' : ''}`}>
+                      <div key={itemKey} className={`p-6 hover:bg-gray-50 transition-colors ${isSelected ? 'bg-blue-50' : ''}`}>
                         <div className="flex items-start justify-between gap-4">
                           <div className="flex items-start gap-3 flex-1">
                             <button
@@ -2402,14 +2469,39 @@ export function QuestionEditor() {
                             )}
                             </div>
                           </div>
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => handleDeleteQuestion(item.id, itemType)}
-                            className="rounded-lg hover:bg-red-50 hover:text-red-600 flex-shrink-0"
-                          >
-                            <Trash2 className="w-4 h-4" />
-                          </Button>
+                          <div className="flex items-center gap-1 flex-shrink-0">
+                            {itemType === 'mcq' && (
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => {
+                                  setSelectedQuestion(item);
+                                  setSelectedQuestionType('mcq');
+                                  setMcqEditForm({
+                                    question: item.question || '',
+                                    optionA: item.optionA || '',
+                                    optionB: item.optionB || '',
+                                    optionC: item.optionC || '',
+                                    optionD: item.optionD || '',
+                                    answer: item.answer || 'A',
+                                  });
+                                  setMcqEditMode(true);
+                                }}
+                                className="rounded-lg hover:bg-gray-100 flex-shrink-0"
+                                title="Edit MCQ"
+                              >
+                                <Pencil className="w-4 h-4" />
+                              </Button>
+                            )}
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => handleDeleteQuestion(item.id, itemType)}
+                              className="rounded-lg hover:bg-red-50 hover:text-red-600 flex-shrink-0"
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </Button>
+                          </div>
                         </div>
                       </div>
                     );
@@ -2514,8 +2606,8 @@ export function QuestionEditor() {
                 )}
               </div>
 
-              {/* Question Content */}
-              {selectedQuestionType !== 'structured' && selectedQuestionType !== 'structuredWriting' && (
+              {/* Question Content (non-MCQ or MCQ when not editing) */}
+              {selectedQuestionType !== 'structured' && selectedQuestionType !== 'structuredWriting' && !(selectedQuestionType === 'mcq' && mcqEditMode) && (
                 <div className="bg-gray-50 rounded-2xl p-6 border border-gray-200">
                   <h3 className="text-sm font-semibold text-gray-700 mb-3 uppercase tracking-wide">Question</h3>
                   <p className="text-base text-gray-900 leading-relaxed whitespace-pre-wrap">
@@ -2524,8 +2616,56 @@ export function QuestionEditor() {
                 </div>
               )}
 
-              {/* MCQ Options */}
-              {selectedQuestionType === 'mcq' && (
+              {/* MCQ: Edit form */}
+              {selectedQuestionType === 'mcq' && mcqEditMode && (
+                <div className="space-y-4">
+                  <div>
+                    <Label className="text-sm font-semibold text-gray-700 uppercase tracking-wide">Question</Label>
+                    <Textarea
+                      value={mcqEditForm.question}
+                      onChange={(e) => setMcqEditForm((f) => ({ ...f, question: e.target.value }))}
+                      className="mt-2 min-h-[100px] rounded-xl border-gray-200"
+                      placeholder="Enter question text"
+                    />
+                  </div>
+                  <div className="grid gap-3">
+                    <Label className="text-sm font-semibold text-gray-700 uppercase tracking-wide">Options &amp; Correct Answer</Label>
+                    {['A', 'B', 'C', 'D'].map((label) => (
+                      <div key={label} className="flex items-center gap-3">
+                        <span className="flex-shrink-0 w-8 h-8 rounded-lg bg-gray-200 flex items-center justify-center text-sm font-semibold text-gray-700">{label}</span>
+                        <Input
+                          value={mcqEditForm[`option${label}`]}
+                          onChange={(e) => setMcqEditForm((f) => ({ ...f, [`option${label}`]: e.target.value }))}
+                          className="flex-1 rounded-xl border-gray-200"
+                          placeholder={`Option ${label}`}
+                        />
+                        <label className="flex items-center gap-2 shrink-0">
+                          <input
+                            type="radio"
+                            name="mcqCorrectAnswer"
+                            checked={mcqEditForm.answer === label}
+                            onChange={() => setMcqEditForm((f) => ({ ...f, answer: label }))}
+                            className="w-4 h-4 text-green-600"
+                          />
+                          <span className="text-sm font-medium text-gray-700">Correct</span>
+                        </label>
+                      </div>
+                    ))}
+                  </div>
+                  <div className="flex gap-2 pt-2">
+                    <Button onClick={handleSaveMcq} disabled={mcqSaving} className="rounded-xl">
+                      {mcqSaving ? <Loader className="w-4 h-4 mr-2 animate-spin" /> : null}
+                      Save changes
+                    </Button>
+                    <Button variant="outline" onClick={handleCancelEditMcq} disabled={mcqSaving} className="rounded-xl">
+                      Cancel
+                    </Button>
+                  </div>
+                </div>
+              )}
+
+              {/* MCQ Options (read-only view) */}
+              {selectedQuestionType === 'mcq' && !mcqEditMode && (
                 <>
                   {selectedQuestion.image && (
                     <div className="rounded-xl overflow-hidden border border-gray-200">
@@ -2754,23 +2894,35 @@ export function QuestionEditor() {
               )}
 
               {/* Actions */}
-              <div className="flex gap-3 pt-4 border-t border-gray-200">
+              <div className="flex flex-wrap gap-3 pt-4 border-t border-gray-200">
                 <Button
                   onClick={handleCloseQuestionView}
                   variant="outline"
-                  className="flex-1 rounded-xl h-12"
+                  className="flex-1 min-w-[140px] rounded-xl h-12"
                 >
                   <ArrowLeft className="w-4 h-4 mr-2" />
                   Back to List
                 </Button>
-                <Button
-                  onClick={() => handleDeleteQuestion(selectedQuestion.id, selectedQuestionType)}
-                  variant="outline"
-                  className="rounded-xl h-12 hover:bg-red-50 hover:text-red-600 hover:border-red-300"
-                >
-                  <Trash2 className="w-4 h-4 mr-2" />
-                  Delete
-                </Button>
+                <div className="flex gap-2">
+                  {selectedQuestionType === 'mcq' && !mcqEditMode && (
+                    <Button
+                      onClick={handleStartEditMcq}
+                      variant="outline"
+                      className="rounded-xl h-12"
+                    >
+                      <Pencil className="w-4 h-4 mr-2" />
+                      Edit
+                    </Button>
+                  )}
+                  <Button
+                    onClick={() => handleDeleteQuestion(selectedQuestion.id, selectedQuestionType)}
+                    variant="outline"
+                    className="rounded-xl h-12 hover:bg-red-50 hover:text-red-600 hover:border-red-300"
+                  >
+                    <Trash2 className="w-4 h-4 mr-2" />
+                    Delete
+                  </Button>
+                </div>
               </div>
             </div>
           </DialogContent>
